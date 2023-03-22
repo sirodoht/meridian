@@ -1,5 +1,6 @@
 # sqlite
-./meridian.db
+meridian.db
 
 # binary
-./meridian
+meridian
+.envrc
