@@ -1,0 +1,2 @@
+export DEBUG=1
+export DATABASE_DSN=file:meridian.db
