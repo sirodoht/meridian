@@ -1,0 +1,24 @@
+{{define "page"}}
+<main>
+    <h1>sign up</h1>
+    <form method="post">
+        <p>
+            <label for="id_username">username</label>
+            <input type="text" name="username" maxlength="64" required id="id_username">
+        </p>
+        <p>
+            <label for="id_email">email</label>
+            <input type="email" name="email" maxlength="64" required id="id_email">
+        </p>
+        <p>
+            <label for="id_password1">password</label>
+            <input type="password" name="password1" required id="id_password1">
+        </p>
+        <p>
+            <label for="id_password2">password confirmation</label>
+            <input type="password" name="password2" required id="id_password2">
+        </p>
+        <input type="submit" value="signup">
+    </form>
+</main>
+{{end}}

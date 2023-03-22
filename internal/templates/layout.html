@@ -1,0 +1,29 @@
+<!DOCTYPE html>
+<html lang="en">
+    <head>
+        <meta charset="utf-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <title>meridian</title>
+        <link rel="stylesheet" href="/static/style.css">
+    </head>
+    <body>
+        <nav>
+            <a href="/">home</a>
+            {{if .IsAuthenticated}}
+            <a href="/dashboard">dashboard</a>
+            <a href="/docs">all docs</a>
+            <a href="/new/doc">new document</a>
+
+            <span>
+                {{ .Username }}
+                <form class="form-inline" action="/logout" method="post">(<input type="submit" value="logout">)</form>
+            </span>
+
+            {{else}}
+            <a href="/signup">signup</a>
+            <a href="/login">login</a>
+            {{end}}
+        </nav>
+        {{template "page" .}}
+    </body>
+</html>

@@ -1,0 +1,16 @@
+{{define "page"}}
+<main>
+    <h1>log in</h1>
+    <form method="post">
+        <p>
+            <label for="id_username">username</label>
+            <input type="text" name="username" maxlength="64" required id="id_username">
+        </p>
+        <p>
+            <label for="id_password">password</label>
+            <input type="password" name="password" required id="id_password">
+        </p>
+        <input type="submit" value="login">
+    </form>
+</main>
+{{end}}
