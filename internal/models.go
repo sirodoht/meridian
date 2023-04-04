@@ -30,25 +30,25 @@ type Session struct {
 }
 
 type (
-	Feed struct {
+	NimonaFeed struct {
 		Metadata nimona.Metadata `nimona:"$metadata,type=feed"`
-		Profile  Profile         `nimona:"profile,omitempty"`
-		Notes    []*Note         `nimona:"posts,omitempty"`
-		Folowees []*Follow       `nimona:"folowees,omitempty"`
+		Profile  NimonaProfile   `nimona:"profile,omitempty"`
+		Notes    []*NimonaNote   `nimona:"posts,omitempty"`
+		Folowees []*NimonaFollow `nimona:"folowees,omitempty"`
 	}
-	Profile struct {
+	NimonaProfile struct {
 		Metadata    nimona.Metadata `nimona:"$metadata,type=profile"`
 		DisplayName string          `nimona:"displayName,omitempty"`
 		Description string          `nimona:"description,omitempty"`
 		AvatarURL   string          `nimona:"avatarURL,omitempty"`
 	}
-	Note struct {
+	NimonaNote struct {
 		Metadata  nimona.Metadata `nimona:"$metadata,type=post"`
 		Key       string          `nimona:"_key,omitempty"`
 		Partition string          `nimona:"_partition,omitempty"`
 		Content   string          `nimona:"content"`
 	}
-	Follow struct {
+	NimonaFollow struct {
 		Metadata  nimona.Metadata      `nimona:"$metadata,type=follow"`
 		Identity  nimona.Identity      `nimona:"identity,omitempty"`
 		Alias     nimona.IdentityAlias `nimona:"alias,omitempty"`

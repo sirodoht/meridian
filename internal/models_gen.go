@@ -13,11 +13,11 @@ var (
 	_ = tilde.NewScanner
 )
 
-func (t *Feed) Document() *nimona.Document {
+func (t *NimonaFeed) Document() *nimona.Document {
 	return nimona.NewDocument(t.Map())
 }
 
-func (t *Feed) Map() tilde.Map {
+func (t *NimonaFeed) Map() tilde.Map {
 	m := tilde.Map{}
 
 	// # t.$type
@@ -87,12 +87,12 @@ func (t *Feed) Map() tilde.Map {
 	return m
 }
 
-func (t *Feed) FromDocument(d *nimona.Document) error {
+func (t *NimonaFeed) FromDocument(d *nimona.Document) error {
 	return t.FromMap(d.Map())
 }
 
-func (t *Feed) FromMap(d tilde.Map) error {
-	*t = Feed{}
+func (t *NimonaFeed) FromMap(d tilde.Map) error {
+	*t = NimonaFeed{}
 
 	// # t.Folowees
 	//
@@ -102,12 +102,12 @@ func (t *Feed) FromMap(d tilde.Map) error {
 	// ElemType: nimona.Follow, ElemKind: struct, ElemTildeKind: Map
 	// IsElemSlice: false, IsElemStruct: true, IsElemPointer: true
 	{
-		sm := []*Follow{} // Follow
+		sm := []*NimonaFollow{} // Follow
 		if vs, err := d.Get("folowees"); err == nil {
 			if vs, ok := vs.(tilde.List); ok {
 				for _, vi := range vs {
 					if v, ok := vi.(tilde.Map); ok {
-						e := &Follow{}
+						e := &NimonaFollow{}
 						d := nimona.NewDocument(v)
 						e.FromDocument(d)
 						sm = append(sm, e)
@@ -143,12 +143,12 @@ func (t *Feed) FromMap(d tilde.Map) error {
 	// ElemType: nimona.Note, ElemKind: struct, ElemTildeKind: Map
 	// IsElemSlice: false, IsElemStruct: true, IsElemPointer: true
 	{
-		sm := []*Note{} // Note
+		sm := []*NimonaNote{} // Note
 		if vs, err := d.Get("posts"); err == nil {
 			if vs, ok := vs.(tilde.List); ok {
 				for _, vi := range vs {
 					if v, ok := vi.(tilde.Map); ok {
-						e := &Note{}
+						e := &NimonaNote{}
 						d := nimona.NewDocument(v)
 						e.FromDocument(d)
 						sm = append(sm, e)
@@ -168,7 +168,7 @@ func (t *Feed) FromMap(d tilde.Map) error {
 	{
 		if v, err := d.Get("profile"); err == nil {
 			if v, ok := v.(tilde.Map); ok {
-				e := Profile{}
+				e := NimonaProfile{}
 				d := nimona.NewDocument(v)
 				e.FromDocument(d)
 				t.Profile = e
@@ -179,11 +179,11 @@ func (t *Feed) FromMap(d tilde.Map) error {
 	return nil
 }
 
-func (t *Follow) Document() *nimona.Document {
+func (t *NimonaFollow) Document() *nimona.Document {
 	return nimona.NewDocument(t.Map())
 }
 
-func (t *Follow) Map() tilde.Map {
+func (t *NimonaFollow) Map() tilde.Map {
 	m := tilde.Map{}
 
 	// # t.$type
@@ -235,12 +235,12 @@ func (t *Follow) Map() tilde.Map {
 	return m
 }
 
-func (t *Follow) FromDocument(d *nimona.Document) error {
+func (t *NimonaFollow) FromDocument(d *nimona.Document) error {
 	return t.FromMap(d.Map())
 }
 
-func (t *Follow) FromMap(d tilde.Map) error {
-	*t = Follow{}
+func (t *NimonaFollow) FromMap(d tilde.Map) error {
+	*t = NimonaFollow{}
 
 	// # t.Alias
 	//
@@ -302,11 +302,11 @@ func (t *Follow) FromMap(d tilde.Map) error {
 	return nil
 }
 
-func (t *Note) Document() *nimona.Document {
+func (t *NimonaNote) Document() *nimona.Document {
 	return nimona.NewDocument(t.Map())
 }
 
-func (t *Note) Map() tilde.Map {
+func (t *NimonaNote) Map() tilde.Map {
 	m := tilde.Map{}
 
 	// # t.$type
@@ -356,12 +356,12 @@ func (t *Note) Map() tilde.Map {
 	return m
 }
 
-func (t *Note) FromDocument(d *nimona.Document) error {
+func (t *NimonaNote) FromDocument(d *nimona.Document) error {
 	return t.FromMap(d.Map())
 }
 
-func (t *Note) FromMap(d tilde.Map) error {
-	*t = Note{}
+func (t *NimonaNote) FromMap(d tilde.Map) error {
+	*t = NimonaNote{}
 
 	// # t.Content
 	//
@@ -417,11 +417,11 @@ func (t *Note) FromMap(d tilde.Map) error {
 	return nil
 }
 
-func (t *Profile) Document() *nimona.Document {
+func (t *NimonaProfile) Document() *nimona.Document {
 	return nimona.NewDocument(t.Map())
 }
 
-func (t *Profile) Map() tilde.Map {
+func (t *NimonaProfile) Map() tilde.Map {
 	m := tilde.Map{}
 
 	// # t.$type
@@ -473,12 +473,12 @@ func (t *Profile) Map() tilde.Map {
 	return m
 }
 
-func (t *Profile) FromDocument(d *nimona.Document) error {
+func (t *NimonaProfile) FromDocument(d *nimona.Document) error {
 	return t.FromMap(d.Map())
 }
 
-func (t *Profile) FromMap(d tilde.Map) error {
-	*t = Profile{}
+func (t *NimonaProfile) FromMap(d tilde.Map) error {
+	*t = NimonaProfile{}
 
 	// # t.AvatarURL
 	//
