@@ -5,23 +5,22 @@ import (
 	"fmt"
 	"net/http"
 	"os"
+	"strconv"
 	"time"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
 	"go.uber.org/zap"
-	gsqlite "gorm.io/driver/sqlite"
+	"gorm.io/driver/sqlite"
 	"gorm.io/gorm"
 
 	"nimona.io"
-
-	_ "modernc.org/sqlite"
 
 	"github.com/sirodoht/meridian/internal"
 )
 
 func main() {
-	debugMode := os.Getenv("DEBUG")
+	debugMode, _ := strconv.ParseBool(os.Getenv("DEBUG"))
 
 	databaseDSN := os.Getenv("DATABASE_DSN")
 	if databaseDSN == "" {
@@ -35,11 +34,16 @@ func main() {
 	defer logger.Sync() // nolint: errcheck
 
 	db, err := gorm.Open(
-		gsqlite.Open(databaseDSN),
+		sqlite.Open(databaseDSN),
 		&gorm.Config{},
 	)
 	if err != nil {
 		logger.Fatal("failed to open database", zap.Error(err))
+	}
+
+	// Enable debug mode
+	if debugMode {
+		db = db.Debug()
 	}
 
 	// Construct a new document store
@@ -95,7 +99,7 @@ func main() {
 	r.Get("/", handlers.RenderIndex)
 
 	// static files
-	if debugMode == "1" {
+	if debugMode {
 		fileServer := http.FileServer(http.Dir("./static/"))
 		r.Handle("/static/*", http.StripPrefix("/static", fileServer))
 	}
