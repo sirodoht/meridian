@@ -24,7 +24,7 @@ func main() {
 
 	databaseDSN := os.Getenv("DATABASE_DSN")
 	if databaseDSN == "" {
-		databaseDSN = ":memory:"
+		databaseDSN = "meridian.sqlite"
 	}
 
 	logger, err := zap.NewProduction()

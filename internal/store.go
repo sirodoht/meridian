@@ -6,17 +6,27 @@ import (
 
 	"gorm.io/gorm"
 	"gorm.io/gorm/clause"
-
-	"nimona.io"
 )
+
+type Store interface {
+	PutUser(context.Context, *User) error
+	GetUser(context.Context, string) (*User, error)
+	PutProfile(context.Context, *Profile) error
+	GetProfile(context.Context, string) (*Profile, error)
+	PutNote(context.Context, *Note) error
+	GetNotes(context.Context, string) ([]*Note, error)
+	PutSession(context.Context, *Session) error
+	GetSession(context.Context, string) (*Session, error)
+}
 
 type SQLStore struct {
 	db *gorm.DB
 }
 
-func NewSQLStore(gdb *gorm.DB) *SQLStore {
+func NewSQLStore(gdb *gorm.DB) Store {
 	gdb.AutoMigrate(
 		&User{},
+		&Profile{},
 		&Note{},
 	)
 
@@ -52,16 +62,16 @@ func (s *SQLStore) PutUser(
 
 func (s *SQLStore) GetUser(
 	ctx context.Context,
-	id *nimona.Identity,
+	identityNRI string,
 ) (*User, error) {
-	if id == nil {
-		return nil, fmt.Errorf("nil request")
+	if identityNRI == "" {
+		return nil, fmt.Errorf("failed to get user: nil request")
 	}
 
 	var user User
 	err := s.db.
 		WithContext(ctx).
-		Where("id = ?", id.String()).
+		Where("id = ?", identityNRI).
 		First(&user).
 		Error
 	if err != nil {
@@ -74,6 +84,51 @@ func (s *SQLStore) GetUser(
 	}
 
 	return &user, nil
+}
+
+func (s *SQLStore) PutProfile(
+	ctx context.Context,
+	req *Profile,
+) error {
+	if req == nil {
+		return fmt.Errorf("failed to put profile: nil request")
+	}
+
+	err := s.db.
+		WithContext(ctx).
+		Clauses(
+			clause.OnConflict{
+				UpdateAll: true,
+			},
+		).
+		Create(req).
+		Error
+	if err != nil {
+		return fmt.Errorf("failed to put profile: %w", err)
+	}
+
+	return nil
+}
+
+func (s *SQLStore) GetProfile(
+	ctx context.Context,
+	identityNRI string,
+) (*Profile, error) {
+	if identityNRI == "" {
+		return nil, fmt.Errorf("failed to get profile: nil request")
+	}
+
+	var profile Profile
+	err := s.db.
+		WithContext(ctx).
+		Where("id = ?", identityNRI).
+		First(&profile).
+		Error
+	if err != nil {
+		return nil, fmt.Errorf("failed to get profile: %w", err)
+	}
+
+	return &profile, nil
 }
 
 func (s *SQLStore) PutNote(
@@ -102,17 +157,17 @@ func (s *SQLStore) PutNote(
 
 func (s *SQLStore) GetNotes(
 	ctx context.Context,
-	id *nimona.Identity,
+	identityNRI string,
 	// TODO: add filters
 ) ([]*Note, error) {
-	if id == nil {
-		return nil, fmt.Errorf("nil request")
+	if identityNRI == "" {
+		return nil, fmt.Errorf("failed to get notes: nil request")
 	}
 
 	var notes []*Note
 	err := s.db.
 		WithContext(ctx).
-		Where("id = ?", id.String()).
+		Where("id = ?", identityNRI).
 		Find(&notes).
 		Error
 	if err != nil {

@@ -8,18 +8,20 @@ import (
 
 type (
 	User struct {
-		IdentityNRI string `gorm:"type:varchar(255);primary_key"`
-		// Meridian specific
+		IdentityNRI  string `gorm:"type:varchar(255);primary_key"`
 		Username     string
 		Email        string
 		PasswordHash string
-		// Nimona specific
+		CreatedAt    time.Time
+		UpdatedAt    time.Time
+	}
+	Profile struct {
+		IdentityNRI string `gorm:"type:varchar(255);primary_key"`
 		DisplayName string
 		Description string
 		AvatarURL   string
-		// Generic
-		CreatedAt time.Time
-		UpdatedAt time.Time
+		CreatedAt   time.Time
+		UpdatedAt   time.Time
 	}
 	Note struct {
 		IdentityNRI string

@@ -20,7 +20,7 @@ type API interface {
 
 func NewAPI(
 	logger *zap.Logger,
-	meridianStore *SQLStore,
+	meridianStore Store,
 	documentStore *nimona.DocumentStore,
 	identityStore *nimona.IdentityStore,
 ) API {
@@ -34,7 +34,7 @@ func NewAPI(
 
 type api struct {
 	logger        *zap.Logger
-	meridianStore *SQLStore
+	meridianStore Store
 	documentStore *nimona.DocumentStore
 	identityStore *nimona.IdentityStore
 }
