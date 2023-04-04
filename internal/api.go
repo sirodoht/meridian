@@ -3,6 +3,8 @@ package internal
 import (
 	"fmt"
 
+	"go.uber.org/zap"
+
 	"nimona.io"
 )
 
@@ -17,15 +19,24 @@ type API interface {
 }
 
 func NewAPI(
-	store *SQLStore,
+	logger *zap.Logger,
+	meridianStore *SQLStore,
+	documentStore *nimona.DocumentStore,
+	identityStore *nimona.IdentityStore,
 ) API {
 	return &api{
-		store: store,
+		logger:        logger,
+		meridianStore: meridianStore,
+		documentStore: documentStore,
+		identityStore: identityStore,
 	}
 }
 
 type api struct {
-	store *SQLStore
+	logger        *zap.Logger
+	meridianStore *SQLStore
+	documentStore *nimona.DocumentStore
+	identityStore *nimona.IdentityStore
 }
 
 type (

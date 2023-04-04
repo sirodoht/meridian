@@ -8,14 +8,17 @@ import (
 )
 
 type Handlers struct {
-	store  *SQLStore
 	logger *zap.Logger
+	api    API
 }
 
-func NewHandlers(store *SQLStore, logger *zap.Logger) *Handlers {
+func NewHandlers(
+	logger *zap.Logger,
+	api API,
+) *Handlers {
 	return &Handlers{
-		store:  store,
 		logger: logger,
+		api:    api,
 	}
 }
 

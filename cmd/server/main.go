@@ -13,6 +13,8 @@ import (
 	gsqlite "gorm.io/driver/sqlite"
 	"gorm.io/gorm"
 
+	"nimona.io"
+
 	_ "modernc.org/sqlite"
 
 	"github.com/sirodoht/meridian/internal"
@@ -37,11 +39,29 @@ func main() {
 		&gorm.Config{},
 	)
 	if err != nil {
-		panic(err)
+		logger.Fatal("failed to open database", zap.Error(err))
 	}
 
-	store := internal.NewSQLStore(db)
-	handlers := internal.NewHandlers(store, logger)
+	// Construct a new document store
+	docStore, err := nimona.NewDocumentStore(db)
+	if err != nil {
+		logger.Fatal("failed to create document store", zap.Error(err))
+	}
+
+	// Construct a new identity store
+	idStore, err := nimona.NewIdentityStore(db)
+	if err != nil {
+		logger.Fatal("failed to create identity store", zap.Error(err))
+	}
+
+	// Construct a new meridian store
+	meridianStore := internal.NewSQLStore(db)
+
+	// Construct a new meridian api
+	api := internal.NewAPI(logger, meridianStore, docStore, idStore)
+
+	// Construct a new meridian router
+	handlers := internal.NewHandlers(logger, api)
 
 	r := chi.NewRouter()
 	r.Use(middleware.Logger)
@@ -55,7 +75,7 @@ func main() {
 			if err != nil {
 				logger.Info("no session cookie")
 			} else {
-				session, err := store.GetSession(r.Context(), c.Value)
+				session, err := meridianStore.GetSession(r.Context(), c.Value)
 				if err != nil {
 					logger.Info("failed to get session", zap.Error(err))
 				} else {
