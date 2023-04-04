@@ -1,21 +1,23 @@
 package internal
 
 import (
+	"context"
 	"fmt"
 
 	"go.uber.org/zap"
+	"golang.org/x/crypto/bcrypt"
 
 	"nimona.io"
 )
 
 type API interface {
-	Register(req *RegisterRequest) (*RegisterResponse, error)
-	Login(req *AuthenticateRequest) (*AuthenticateResponse, error)
-	GetProfile(req *GetProfileRequest) (*GetProfileResponse, error)
-	UpdateProfile(req *UpdateProfileRequest) (*UpdateProfileResponse, error)
-	CreateNote(req *CreateNoteRequest) (*CreateNoteResponse, error)
-	GetNotes(req *GetNotesRequest) (*GetNotesResponse, error)
-	GetNote(req *GetNoteRequest) (*GetNoteResponse, error)
+	Register(context.Context, *RegisterRequest) (*RegisterResponse, error)
+	Login(context.Context, *AuthenticateRequest) (*AuthenticateResponse, error)
+	GetProfile(context.Context, *GetProfileRequest) (*GetProfileResponse, error)
+	UpdateProfile(context.Context, *UpdateProfileRequest) (*UpdateProfileResponse, error)
+	CreateNote(context.Context, *CreateNoteRequest) (*CreateNoteResponse, error)
+	GetNotes(context.Context, *GetNotesRequest) (*GetNotesResponse, error)
+	GetNote(context.Context, *GetNoteRequest) (*GetNoteResponse, error)
 }
 
 func NewAPI(
@@ -45,17 +47,43 @@ type (
 		Password string `json:"password"`
 	}
 	RegisterResponse struct {
-		User        *User            `json:"user"`
-		Identity    *nimona.Identity `json:"identity"`
-		Keygraph    *nimona.KeyGraph `json:"keygraph"`
-		KeysCurrent *nimona.KeyPair  `json:"keysCurrent"`
-		KeysNext    *nimona.KeyPair  `json:"keysNext"`
+		User     *User            `json:"user"`
+		Identity *nimona.Identity `json:"identity"`
 	}
 )
 
-func (api *api) Register(req *RegisterRequest) (*RegisterResponse, error) {
-	// TODO: implement
-	return nil, fmt.Errorf("not implemented")
+func (api *api) Register(
+	ctx context.Context,
+	req *RegisterRequest,
+) (*RegisterResponse, error) {
+	// create new identity
+	id, err := api.identityStore.NewIdentity("user")
+	if err != nil {
+		return nil, fmt.Errorf("failed to create identity: %w", err)
+	}
+
+	// hash password
+	passwordHash, err := hashPassword(req.Password)
+	if err != nil {
+		return nil, fmt.Errorf("failed to hash password: %w", err)
+	}
+
+	// create user
+	user := &User{
+		IdentityNRI:  id.String(),
+		Username:     req.Username,
+		PasswordHash: passwordHash,
+	}
+	err = api.meridianStore.PutUser(ctx, user)
+	if err != nil {
+		return nil, fmt.Errorf("failed to put user: %w", err)
+	}
+
+	res := &RegisterResponse{
+		User:     user,
+		Identity: id,
+	}
+	return res, nil
 }
 
 type (
@@ -68,7 +96,10 @@ type (
 	}
 )
 
-func (api *api) Login(req *AuthenticateRequest) (*AuthenticateResponse, error) {
+func (api *api) Login(
+	ctx context.Context,
+	req *AuthenticateRequest,
+) (*AuthenticateResponse, error) {
 	// TODO: implement
 	return nil, fmt.Errorf("not implemented")
 }
@@ -83,7 +114,10 @@ type (
 	}
 )
 
-func (api *api) GetProfile(req *GetProfileRequest) (*GetProfileResponse, error) {
+func (api *api) GetProfile(
+	ctx context.Context,
+	req *GetProfileRequest,
+) (*GetProfileResponse, error) {
 	// TODO: implement
 	return nil, fmt.Errorf("not implemented")
 }
@@ -101,7 +135,10 @@ type (
 	}
 )
 
-func (api *api) UpdateProfile(req *UpdateProfileRequest) (*UpdateProfileResponse, error) {
+func (api *api) UpdateProfile(
+	ctx context.Context,
+	req *UpdateProfileRequest,
+) (*UpdateProfileResponse, error) {
 	// TODO: implement
 	return nil, fmt.Errorf("not implemented")
 }
@@ -114,7 +151,10 @@ type (
 	CreateNoteResponse struct{}
 )
 
-func (api *api) CreateNote(req *CreateNoteRequest) (*CreateNoteResponse, error) {
+func (api *api) CreateNote(
+	ctx context.Context,
+	req *CreateNoteRequest,
+) (*CreateNoteResponse, error) {
 	// TODO: implement
 	return nil, fmt.Errorf("not implemented")
 }
@@ -130,7 +170,10 @@ type (
 	}
 )
 
-func (api *api) GetNotes(req *GetNotesRequest) (*GetNotesResponse, error) {
+func (api *api) GetNotes(
+	ctx context.Context,
+	req *GetNotesRequest,
+) (*GetNotesResponse, error) {
 	// TODO: implement
 	return nil, fmt.Errorf("not implemented")
 }
@@ -144,7 +187,18 @@ type (
 	}
 )
 
-func (api *api) GetNote(req *GetNoteRequest) (*GetNoteResponse, error) {
+func (api *api) GetNote(
+	ctx context.Context,
+	req *GetNoteRequest,
+) (*GetNoteResponse, error) {
 	// TODO: implement
 	return nil, fmt.Errorf("not implemented")
+}
+
+func hashPassword(password string) (string, error) {
+	bytes, err := bcrypt.GenerateFromPassword([]byte(password), 14)
+	if err != nil {
+		return "", err
+	}
+	return string(bytes), nil
 }

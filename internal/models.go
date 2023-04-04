@@ -9,8 +9,8 @@ import (
 type (
 	User struct {
 		IdentityNRI  string `gorm:"type:varchar(255);primary_key"`
-		Username     string
-		Email        string
+		Username     string `gorm:"type:varchar(255);unique"`
+		Email        string `gorm:"type:varchar(255);unique"`
 		PasswordHash string
 		CreatedAt    time.Time
 		UpdatedAt    time.Time
