@@ -3,35 +3,42 @@ package main
 import (
 	"context"
 	"fmt"
-	"log"
 	"net/http"
 	"os"
 	"time"
 
-	"github.com/sirodoht/meridian/internal"
-	"go.uber.org/zap"
-
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
-	"github.com/jmoiron/sqlx"
+	"go.uber.org/zap"
+	gsqlite "gorm.io/driver/sqlite"
+	"gorm.io/gorm"
+
 	_ "modernc.org/sqlite"
+
+	"github.com/sirodoht/meridian/internal"
 )
 
 func main() {
 	debugMode := os.Getenv("DEBUG")
 
 	databaseDSN := os.Getenv("DATABASE_DSN")
-	db, err := sqlx.Open("sqlite", databaseDSN)
-	if err != nil {
-		log.Fatal(err)
+	if databaseDSN == "" {
+		databaseDSN = ":memory:"
 	}
-	defer db.Close()
 
 	logger, err := zap.NewProduction()
 	if err != nil {
 		panic(err)
 	}
 	defer logger.Sync() // nolint: errcheck
+
+	db, err := gorm.Open(
+		gsqlite.Open(databaseDSN),
+		&gorm.Config{},
+	)
+	if err != nil {
+		panic(err)
+	}
 
 	store := internal.NewSQLStore(db)
 	handlers := internal.NewHandlers(store, logger)
@@ -42,18 +49,22 @@ func main() {
 	// middleware to check if user is authenticated
 	r.Use(func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			var username string
+			var identityNRI string
 			isAuthenticated := false
 			c, err := r.Cookie("session")
 			if err != nil {
-				fmt.Println(err)
+				logger.Info("no session cookie")
 			} else {
-				username = store.GetUsernameSession(r.Context(), c.Value)
-				if err == nil {
+				session, err := store.GetSession(r.Context(), c.Value)
+				if err != nil {
+					logger.Info("failed to get session", zap.Error(err))
+				} else {
+					// TODO: check if session is expired
+					identityNRI = session.IdentityNRI
 					isAuthenticated = true
 				}
 			}
-			ctx := context.WithValue(r.Context(), internal.KeyUsername, username)
+			ctx := context.WithValue(r.Context(), internal.KeyIdentity, identityNRI)
 			ctx = context.WithValue(ctx, internal.KeyIsAuthenticated, isAuthenticated)
 
 			next.ServeHTTP(w, r.WithContext(ctx))

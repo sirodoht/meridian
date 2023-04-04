@@ -30,7 +30,7 @@ func (handlers *Handlers) RenderIndex(w http.ResponseWriter, r *http.Request) {
 	}
 	err = t.Execute(w, map[string]interface{}{
 		"IsAuthenticated": r.Context().Value(KeyIsAuthenticated),
-		"Username":        r.Context().Value(KeyUsername),
+		"Username":        r.Context().Value(KeyIdentity),
 	})
 	if err != nil {
 		panic(err)

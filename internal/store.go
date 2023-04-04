@@ -3,296 +3,171 @@ package internal
 import (
 	"context"
 	"fmt"
-	"time"
 
-	"github.com/jmoiron/sqlx"
+	"gorm.io/gorm"
+	"gorm.io/gorm/clause"
+
+	"nimona.io"
 )
 
 type SQLStore struct {
-	db *sqlx.DB
+	db *gorm.DB
 }
 
-func NewSQLStore(db *sqlx.DB) *SQLStore {
+func NewSQLStore(gdb *gorm.DB) *SQLStore {
+	gdb.AutoMigrate(
+		&User{},
+		&Note{},
+	)
+
 	return &SQLStore{
-		db: db,
+		db: gdb,
 	}
 }
 
-func (s *SQLStore) InsertUser(ctx context.Context, d *User) (int64, error) {
-	var id int64
-	rows, err := s.db.NamedQuery(`
-		INSERT INTO users (
-			username,
-			email,
-			created_at,
-			updated_at
-		) VALUES (
-			:username,
-			:email,
-			:created_at,
-			:updated_at
-		) RETURNING id`, d)
-	if err != nil {
-		return 0, err
-	}
-	if rows.Next() {
-		err = rows.Scan(&id)
-		if err != nil {
-			panic(err)
-		}
-	}
-	return id, nil
-}
-
-func (s *SQLStore) InsertUserPage(
+// PutUser will create or update a user
+func (s *SQLStore) PutUser(
 	ctx context.Context,
-	username string,
-	email string,
-	passwordHash string,
-) (int64, error) {
-	var id int64
-	timenow := time.Now()
-	row := s.db.QueryRow(`
-		INSERT INTO users (
-			email,
-			username,
-			password_hash,
-			created_at,
-			updated_at
-		) VALUES (
-			$1,
-			$2,
-			$3,
-			$4,
-			$5
-		) RETURNING id`,
-		email,
-		username,
-		passwordHash,
-		timenow,
-		timenow,
-	)
-	err := row.Scan(&id)
-	if err != nil {
-		return 0, err
-	}
-	return id, nil
-}
-
-func (s *SQLStore) UpdateUser(
-	ctx context.Context,
-	id int64,
-	field string,
-	value string,
+	req *User,
 ) error {
-	sql := fmt.Sprintf("UPDATE users SET %s=:value WHERE id=:id", field)
-	_, err := s.db.NamedExec(sql, map[string]interface{}{
-		"field": field,
-		"value": value,
-		"id":    id,
-	})
-	if err != nil {
-		return err
+	if req == nil {
+		return fmt.Errorf("failed to put user: nil request")
 	}
+
+	err := s.db.
+		WithContext(ctx).
+		Clauses(
+			clause.OnConflict{
+				UpdateAll: true,
+			},
+		).
+		Create(req).
+		Error
+	if err != nil {
+		return fmt.Errorf("failed to put user: %w", err)
+	}
+
 	return nil
 }
 
-func (s *SQLStore) GetOneUser(ctx context.Context, id int64) (*User, error) {
-	var users []*User
-	err := s.db.SelectContext(
-		ctx,
-		&users,
-		`SELECT * FROM users WHERE id=$1`,
-		id,
-	)
-	if err != nil {
-		return nil, err
-	}
-	return users[0], nil
-}
-
-func (s *SQLStore) GetOneUserByUsername(
+func (s *SQLStore) GetUser(
 	ctx context.Context,
-	username string,
+	id *nimona.Identity,
 ) (*User, error) {
-	var users []*User
-	err := s.db.SelectContext(
-		ctx,
-		&users,
-		`SELECT * FROM users WHERE username=$1`,
-		username,
-	)
+	if id == nil {
+		return nil, fmt.Errorf("nil request")
+	}
+
+	var user User
+	err := s.db.
+		WithContext(ctx).
+		Where("id = ?", id.String()).
+		First(&user).
+		Error
 	if err != nil {
-		panic(err)
+		return nil, fmt.Errorf("failed to get user: %w", err)
 	}
-	if len(users) == 0 {
-		return nil, fmt.Errorf("no user exists with this username")
+
+	// TODO: improve not found check
+	if user.IdentityNRI == "" {
+		return nil, fmt.Errorf("user not found")
 	}
-	return users[0], nil
+
+	return &user, nil
 }
 
-func (s *SQLStore) InsertDocument(
+func (s *SQLStore) PutNote(
 	ctx context.Context,
-	d *Document,
-) (int64, error) {
-	var id int64
-	rows, err := s.db.NamedQuery(`
-		INSERT INTO documents (
-			title,
-			body,
-			created_at,
-			updated_at
-		) VALUES (
-			:title,
-			:body,
-			:created_at,
-			:updated_at
-		) RETURNING id`, d)
-	if err != nil {
-		return 0, err
-	}
-	if rows.Next() {
-		err = rows.Scan(&id)
-		if err != nil {
-			panic(err)
-		}
-	}
-	return id, nil
-}
-
-func (s *SQLStore) UpdateDocument(
-	ctx context.Context,
-	id int64,
-	field string,
-	value string,
+	req *Note,
 ) error {
-	sql := fmt.Sprintf(`
-		UPDATE documents
-		SET
-			%s=:value,
-			updated_at=now()
-		WHERE id=:id
-	`, field)
-	_, err := s.db.NamedExec(sql, map[string]interface{}{
-		"field": field,
-		"value": value,
-		"id":    id,
-	})
-	if err != nil {
-		return err
+	if req == nil {
+		return fmt.Errorf("failed to put note: nil request")
 	}
+
+	err := s.db.
+		WithContext(ctx).
+		Clauses(
+			clause.OnConflict{
+				UpdateAll: true,
+			},
+		).
+		Create(req).
+		Error
+	if err != nil {
+		return fmt.Errorf("failed to put note: %w", err)
+	}
+
 	return nil
 }
 
-func (s *SQLStore) GetAllDocument(ctx context.Context) ([]*Document, error) {
-	var docs []*Document
-	err := s.db.SelectContext(
-		ctx,
-		&docs,
-		`SELECT * FROM documents ORDER BY title ASC`,
-	)
-	if err != nil {
-		return nil, err
-	}
-	return docs, nil
-}
-
-func (s *SQLStore) GetOneDocument(
+func (s *SQLStore) GetNotes(
 	ctx context.Context,
-	id int64,
-) (*Document, error) {
-	var docs []*Document
-	err := s.db.SelectContext(
-		ctx,
-		&docs,
-		`SELECT * FROM documents WHERE id=$1`,
-		id,
-	)
-	if err != nil {
-		return nil, err
+	id *nimona.Identity,
+	// TODO: add filters
+) ([]*Note, error) {
+	if id == nil {
+		return nil, fmt.Errorf("nil request")
 	}
-	return docs[0], nil
+
+	var notes []*Note
+	err := s.db.
+		WithContext(ctx).
+		Where("id = ?", id.String()).
+		Find(&notes).
+		Error
+	if err != nil {
+		return nil, fmt.Errorf("failed to get notes: %w", err)
+	}
+
+	return notes, nil
 }
 
-func (s *SQLStore) InsertSession(
+func (s *SQLStore) PutSession(
 	ctx context.Context,
-	d *Session,
-) (int64, error) {
-	var id int64
-	rows, err := s.db.NamedQuery(`
-		INSERT INTO sessions (
-			user_id,
-			token_hash
-		) VALUES (
-			:user_id,
-			:token_hash
-		) RETURNING id`, d)
-	if err != nil {
-		return 0, err
+	req *Session,
+) error {
+	if req == nil {
+		return fmt.Errorf("failed to put session: nil request")
 	}
-	if rows.Next() {
-		err = rows.Scan(&id)
-		if err != nil {
-			panic(err)
-		}
-	}
-	return id, nil
-}
 
-func (s *SQLStore) GetOneSession(ctx context.Context, tokenHash string) (
-	*Session,
-	error,
-) {
-	var sessions []*Session
-	err := s.db.SelectContext(
-		ctx,
-		&sessions,
-		`SELECT * FROM sessions WHERE token_hash=$1`,
-		tokenHash,
-	)
+	err := s.db.
+		WithContext(ctx).
+		Clauses(
+			clause.OnConflict{
+				UpdateAll: true,
+			},
+		).
+		Create(req).
+		Error
 	if err != nil {
-		return nil, err
+		return fmt.Errorf("failed to put session: %w", err)
 	}
-	if len(sessions) == 0 {
-		return nil, fmt.Errorf("no user exists with this username")
-	}
-	return sessions[0], nil
-}
 
-func (s *SQLStore) GetUsernameSession(
-	ctx context.Context,
-	tokenHash string,
-) string {
-	type UserSession struct {
-		Username string
-	}
-	var userSessions []*UserSession
-	err := s.db.SelectContext(
-		ctx,
-		&userSessions,
-		`SELECT users.username
-		FROM sessions JOIN users ON sessions.user_id = users.id
-		WHERE token_hash=$1`,
-		tokenHash,
-	)
-	if err != nil {
-		panic(err)
-	}
-	if len(userSessions) == 0 {
-		return ""
-	}
-	return userSessions[0].Username
-}
-
-func (s *SQLStore) DeleteSession(ctx context.Context, tokenHash string) error {
-	_, err := s.db.Exec(`
-		DELETE FROM sessions
-		WHERE token_hash = $1`,
-		tokenHash,
-	)
-	if err != nil {
-		fmt.Println(err)
-		return err
-	}
 	return nil
+}
+
+func (s *SQLStore) GetSession(
+	ctx context.Context,
+	token string,
+) (*Session, error) {
+	if token == "" {
+		return nil, fmt.Errorf("nil request")
+	}
+
+	var session Session
+	err := s.db.
+		WithContext(ctx).
+		Where("token = ?", token).
+		First(&session).
+		Error
+	if err != nil {
+		return nil, fmt.Errorf("failed to get session: %w", err)
+	}
+
+	// TODO: improve not found check
+	if session.Token == "" {
+		return nil, fmt.Errorf("session not found")
+	}
+
+	return &session, nil
 }

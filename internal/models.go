@@ -6,28 +6,32 @@ import (
 	"nimona.io"
 )
 
-type User struct {
-	ID           int64     `db:"id"`
-	Username     string    `db:"username"`
-	Email        string    `db:"email"`
-	PasswordHash string    `db:"password_hash"`
-	CreatedAt    time.Time `db:"created_at"`
-	UpdatedAt    time.Time `db:"updated_at"`
-}
+type (
+	User struct {
+		IdentityNRI  string `gorm:"type:varchar(255);primary_key"`
+		Username     string
+		Email        string
+		PasswordHash string
+		CreatedAt    time.Time
+		UpdatedAt    time.Time
+	}
+	Note struct {
+		IdentityNRI string
+		NoteID      string `gorm:"type:varchar(255);primary_key"`
+		Content     string `gorm:"type:text"`
+		CreatedAt   time.Time
+		UpdatedAt   time.Time
+	}
+)
 
-type Document struct {
-	ID        int64     `db:"id"`
-	Title     string    `db:"title"`
-	Body      string    `db:"body"`
-	CreatedAt time.Time `db:"created_at"`
-	UpdatedAt time.Time `db:"updated_at"`
-}
-
-type Session struct {
-	ID        int64  `db:"id"`
-	UserID    int64  `db:"user_id"`
-	TokenHash string `db:"token_hash"`
-}
+type (
+	Session struct {
+		IdentityNRI string `gorm:"type:varchar(255);primary_key"`
+		Token       string `gorm:"type:varchar(255);primary_key"`
+		CreatedAt   time.Time
+		UpdatedAt   time.Time
+	}
+)
 
 type (
 	NimonaFeed struct {

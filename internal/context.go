@@ -3,6 +3,6 @@ package internal
 type ContextKey int
 
 const (
-	KeyUsername        ContextKey = iota
+	KeyIdentity        ContextKey = iota
 	KeyIsAuthenticated ContextKey = iota
 )
