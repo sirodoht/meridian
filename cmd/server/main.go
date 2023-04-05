@@ -65,15 +65,16 @@ func main() {
 	api := internal.NewAPI(logger, meridianStore, docStore, idStore)
 
 	// Construct a new meridian router
-	handlers := internal.NewHandlers(logger, api)
+	handlers := internal.NewHandlers(logger, api, meridianStore)
 
 	r := chi.NewRouter()
 	r.Use(middleware.Logger)
 
 	// middleware to check if user is authenticated
+	// TODO: move to internal/middleware.go
 	r.Use(func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			var identityNRI string
+			var username string
 			isAuthenticated := false
 			c, err := r.Cookie("session")
 			if err != nil {
@@ -84,11 +85,11 @@ func main() {
 					logger.Info("failed to get session", zap.Error(err))
 				} else {
 					// TODO: check if session is expired
-					identityNRI = session.IdentityNRI
+					username = session.Username
 					isAuthenticated = true
 				}
 			}
-			ctx := context.WithValue(r.Context(), internal.KeyIdentity, identityNRI)
+			ctx := context.WithValue(r.Context(), internal.KeyUsername, username)
 			ctx = context.WithValue(ctx, internal.KeyIsAuthenticated, isAuthenticated)
 
 			next.ServeHTTP(w, r.WithContext(ctx))
@@ -96,7 +97,14 @@ func main() {
 	})
 
 	// routes
+	// TODO: move to internal/router.go
 	r.Get("/", handlers.RenderIndex)
+	r.Get("/login", handlers.HandleLogin)
+	r.Post("/login", handlers.HandleLogin)
+	r.Get("/signup", handlers.HandleRegister)
+	r.Post("/signup", handlers.HandleRegister)
+	r.Get("/notes/new", handlers.HandleNotesNew)
+	r.Post("/notes/new", handlers.HandleNotesNew)
 
 	// static files
 	if debugMode {

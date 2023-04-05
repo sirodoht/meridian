@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/google/uuid"
 	"go.uber.org/zap"
 	"golang.org/x/crypto/bcrypt"
 
@@ -45,10 +46,12 @@ type (
 	RegisterRequest struct {
 		Username string `json:"username"`
 		Password string `json:"password"`
+		Email    string `json:"email"`
 	}
 	RegisterResponse struct {
-		User     *User            `json:"user"`
-		Identity *nimona.Identity `json:"identity"`
+		User      *User            `json:"user"`
+		Identity  *nimona.Identity `json:"identity"`
+		SessionID string           `json:"sessionId"`
 	}
 )
 
@@ -79,9 +82,20 @@ func (api *api) Register(
 		return nil, fmt.Errorf("failed to put user: %w", err)
 	}
 
+	// create session
+	ses := &Session{
+		ID:       uuid.NewString(),
+		Username: req.Username,
+	}
+	err = api.meridianStore.PutSession(ctx, ses)
+	if err != nil {
+		return nil, fmt.Errorf("failed to put session: %w", err)
+	}
+
 	res := &RegisterResponse{
-		User:     user,
-		Identity: id,
+		User:      user,
+		Identity:  id,
+		SessionID: ses.ID,
 	}
 	return res, nil
 }
@@ -92,7 +106,8 @@ type (
 		Password string `json:"password"`
 	}
 	AuthenticateResponse struct {
-		Token string `json:"token"`
+		SessionID string `json:"sessionId"`
+		User      *User  `json:"user"`
 	}
 )
 
@@ -100,8 +115,26 @@ func (api *api) Login(
 	ctx context.Context,
 	req *AuthenticateRequest,
 ) (*AuthenticateResponse, error) {
-	// TODO: implement
-	return nil, fmt.Errorf("not implemented")
+	// get user
+	user, err := api.meridianStore.GetUser(ctx, req.Username)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get user: %w", err)
+	}
+
+	// create session
+	ses := &Session{
+		ID:       uuid.NewString(),
+		Username: req.Username,
+	}
+	err = api.meridianStore.PutSession(ctx, ses)
+	if err != nil {
+		return nil, fmt.Errorf("failed to put session: %w", err)
+	}
+
+	return &AuthenticateResponse{
+		SessionID: ses.ID,
+		User:      user,
+	}, nil
 }
 
 type (
@@ -145,8 +178,8 @@ func (api *api) UpdateProfile(
 
 type (
 	CreateNoteRequest struct {
-		IdentityNRI string `json:"identity"`
-		Content     string `json:"content"`
+		Username string `json:"username"`
+		Content  string `json:"content"`
 	}
 	CreateNoteResponse struct{}
 )
@@ -155,7 +188,40 @@ func (api *api) CreateNote(
 	ctx context.Context,
 	req *CreateNoteRequest,
 ) (*CreateNoteResponse, error) {
-	// TODO: implement
+	// get user
+	user, err := api.meridianStore.GetUser(ctx, req.Username)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get user: %w", err)
+	}
+
+	// get identity
+	id, err := nimona.ParseIdentityNRI(user.IdentityNRI)
+	if err != nil {
+		return nil, fmt.Errorf("failed to parse identity: %w", err)
+	}
+	kg, err := api.identityStore.IdentityStore.Get(*id)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get identity: %w", err)
+	}
+	kp, err := api.identityStore.KeyPairStore.Get(kg.Keys)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get keypair: %w", err)
+	}
+
+	// get feed for identity
+	// TODO: get feed from identity
+
+	// create note
+	// TODO: add metadata
+	note := &NimonaNote{
+		Content: req.Content,
+	}
+	// TODO: sign note
+	// TODO: create patch
+	// TODO: store document
+	// TODO: apply patch
+
+	fmt.Println(kp, note)
 	return nil, fmt.Errorf("not implemented")
 }
 

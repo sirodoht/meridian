@@ -4,11 +4,13 @@ go 1.20
 
 require (
 	github.com/go-chi/chi/v5 v5.0.8
+	github.com/google/uuid v1.3.0
 	github.com/vikyd/zero v0.0.0-20190921142904-0f738d0bc858
 	go.uber.org/zap v1.24.0
+	golang.org/x/crypto v0.7.0
 	gorm.io/driver/sqlite v1.4.4
 	gorm.io/gorm v1.24.6
-	nimona.io v0.0.0-20230331155538-bac0e32f6c6c
+	nimona.io v0.0.0-20230403170942-692e202a96e7
 )
 
 require (
@@ -17,6 +19,7 @@ require (
 	github.com/anacrolix/missinggo/v2 v2.7.1 // indirect
 	github.com/anacrolix/sync v0.4.0 // indirect
 	github.com/davecgh/go-spew v1.1.1 // indirect
+	github.com/geoah/go-pubsub v0.0.3 // indirect
 	github.com/gobwas/glob v0.2.3 // indirect
 	github.com/golang/mock v1.7.0-rc.1 // indirect
 	github.com/hashicorp/errwrap v1.1.0 // indirect
@@ -37,8 +40,7 @@ require (
 	github.com/valyala/fastjson v1.6.4 // indirect
 	go.uber.org/atomic v1.10.0 // indirect
 	go.uber.org/multierr v1.10.0 // indirect
-	golang.org/x/crypto v0.7.0 // indirect
-	golang.org/x/sys v0.6.0 // indirect
+	golang.org/x/sys v0.7.0 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 	modernc.org/sqlite v1.21.0 // indirect
 )

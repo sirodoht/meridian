@@ -8,6 +8,8 @@ import (
 	"gorm.io/gorm/clause"
 )
 
+var ErrNotFound = fmt.Errorf("not found")
+
 type Store interface {
 	PutUser(context.Context, *User) error
 	GetUser(context.Context, string) (*User, error)
@@ -28,6 +30,7 @@ func NewSQLStore(gdb *gorm.DB) Store {
 		&User{},
 		&Profile{},
 		&Note{},
+		&Session{},
 	)
 
 	return &SQLStore{
@@ -62,16 +65,16 @@ func (s *SQLStore) PutUser(
 
 func (s *SQLStore) GetUser(
 	ctx context.Context,
-	identityNRI string,
+	username string,
 ) (*User, error) {
-	if identityNRI == "" {
+	if username == "" {
 		return nil, fmt.Errorf("failed to get user: nil request")
 	}
 
 	var user User
 	err := s.db.
 		WithContext(ctx).
-		Where("id = ?", identityNRI).
+		Where("username = ?", username).
 		First(&user).
 		Error
 	if err != nil {
@@ -80,7 +83,7 @@ func (s *SQLStore) GetUser(
 
 	// TODO: improve not found check
 	if user.IdentityNRI == "" {
-		return nil, fmt.Errorf("user not found")
+		return nil, ErrNotFound
 	}
 
 	return &user, nil
@@ -125,7 +128,7 @@ func (s *SQLStore) GetProfile(
 		First(&profile).
 		Error
 	if err != nil {
-		return nil, fmt.Errorf("failed to get profile: %w", err)
+		return nil, ErrNotFound
 	}
 
 	return &profile, nil
@@ -203,16 +206,16 @@ func (s *SQLStore) PutSession(
 
 func (s *SQLStore) GetSession(
 	ctx context.Context,
-	token string,
+	id string,
 ) (*Session, error) {
-	if token == "" {
+	if id == "" {
 		return nil, fmt.Errorf("nil request")
 	}
 
 	var session Session
 	err := s.db.
 		WithContext(ctx).
-		Where("token = ?", token).
+		Where("id = ?", id).
 		First(&session).
 		Error
 	if err != nil {
@@ -220,8 +223,8 @@ func (s *SQLStore) GetSession(
 	}
 
 	// TODO: improve not found check
-	if session.Token == "" {
-		return nil, fmt.Errorf("session not found")
+	if session.ID == "" {
+		return nil, ErrNotFound
 	}
 
 	return &session, nil

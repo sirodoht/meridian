@@ -9,7 +9,7 @@ import (
 type (
 	User struct {
 		IdentityNRI  string `gorm:"type:varchar(255);primary_key"`
-		Username     string `gorm:"type:varchar(255);unique"`
+		Username     string `gorm:"type:varchar(255);unique,index"`
 		Email        string `gorm:"type:varchar(255);unique"`
 		PasswordHash string
 		CreatedAt    time.Time
@@ -34,10 +34,10 @@ type (
 
 type (
 	Session struct {
-		IdentityNRI string `gorm:"type:varchar(255);primary_key"`
-		Token       string `gorm:"type:varchar(255);primary_key"`
-		CreatedAt   time.Time
-		UpdatedAt   time.Time
+		ID        string `gorm:"type:varchar(255);primary_key"`
+		Username  string
+		CreatedAt time.Time
+		UpdatedAt time.Time
 	}
 )
 
