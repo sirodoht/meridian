@@ -1,6 +1,12 @@
 # sqlite
-meridian.db
+*.db
+*.sqlite
 
-# binary
+# binaries
 meridian
-.envrc
+
+# temporary
+tmp
+
+# local development
+.air.toml
