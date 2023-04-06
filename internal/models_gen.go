@@ -70,7 +70,7 @@ func (t *NimonaFeed) Map() tilde.Map {
 					sm = append(sm, v.Map())
 				}
 			}
-			m.Set("posts", sm)
+			m.Set("notes", sm)
 		}
 	}
 
@@ -144,7 +144,7 @@ func (t *NimonaFeed) FromMap(d tilde.Map) error {
 	// IsElemSlice: false, IsElemStruct: true, IsElemPointer: true
 	{
 		sm := []*NimonaNote{} // Note
-		if vs, err := d.Get("posts"); err == nil {
+		if vs, err := d.Get("notes"); err == nil {
 			if vs, ok := vs.(tilde.List); ok {
 				for _, vi := range vs {
 					if v, ok := vi.(tilde.Map); ok {
@@ -314,7 +314,7 @@ func (t *NimonaNote) Map() tilde.Map {
 	// Type: string, Kind: string, TildeKind: InvalidValueKind0
 	// IsSlice: false, IsStruct: false, IsPointer: false
 	{
-		m.Set("$type", tilde.String("post"))
+		m.Set("$type", tilde.String("note"))
 	}
 
 	// # t.Content

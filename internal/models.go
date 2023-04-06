@@ -47,7 +47,7 @@ type (
 	NimonaFeed struct {
 		Metadata nimona.Metadata `nimona:"$metadata,type=feed"`
 		Profile  NimonaProfile   `nimona:"profile,omitempty"`
-		Notes    []*NimonaNote   `nimona:"posts,omitempty"`
+		Notes    []*NimonaNote   `nimona:"notes,omitempty"`
 		Folowees []*NimonaFollow `nimona:"folowees,omitempty"`
 	}
 	NimonaProfile struct {
@@ -57,7 +57,7 @@ type (
 		AvatarURL   string          `nimona:"avatarURL,omitempty"`
 	}
 	NimonaNote struct {
-		Metadata  nimona.Metadata `nimona:"$metadata,type=post"`
+		Metadata  nimona.Metadata `nimona:"$metadata,type=note"`
 		Key       string          `nimona:"_key,omitempty"`
 		Partition string          `nimona:"_partition,omitempty"`
 		Content   string          `nimona:"content"`
