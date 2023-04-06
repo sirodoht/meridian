@@ -329,6 +329,8 @@ type (
 		IdentityNRI string `json:"identity"`
 		// TODO: add filters
 		// TODO: add pagination
+		Offset int `json:"offset"`
+		Limit  int `json:"limit"`
 	}
 	GetNotesResponse struct {
 		Notes []*Note `json:"notes"`
@@ -339,8 +341,25 @@ func (api *api) GetNotes(
 	ctx context.Context,
 	req *GetNotesRequest,
 ) (*GetNotesResponse, error) {
-	// TODO: implement
-	return nil, fmt.Errorf("not implemented")
+	// set default limit
+	if req.Limit == 0 {
+		req.Limit = 50
+	}
+
+	// get notes
+	notes, err := api.meridianStore.GetNotes(
+		ctx,
+		req.IdentityNRI,
+		req.Offset,
+		req.Limit,
+	)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get notes: %w", err)
+	}
+
+	return &GetNotesResponse{
+		Notes: notes,
+	}, nil
 }
 
 type (

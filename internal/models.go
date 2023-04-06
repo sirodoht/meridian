@@ -29,6 +29,8 @@ type (
 		Content     string `gorm:"type:text"`
 		CreatedAt   time.Time
 		UpdatedAt   time.Time
+		// Virtual
+		Profile *Profile `gorm:"foreignKey:IdentityNRI;references:IdentityNRI"`
 	}
 )
 

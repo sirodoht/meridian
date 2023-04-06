@@ -162,15 +162,22 @@ func (s *SQLStore) GetNotes(
 	ctx context.Context,
 	identityNRI string,
 	// TODO: add filters
+	offset int,
+	limit int,
 ) ([]*Note, error) {
-	if identityNRI == "" {
-		return nil, fmt.Errorf("failed to get notes: nil request")
+	query := s.db.
+		WithContext(ctx).
+		Preload("Profile")
+
+	if identityNRI != "" {
+		query = query.Where("identity_nri = ?", identityNRI)
 	}
 
 	var notes []*Note
-	err := s.db.
-		WithContext(ctx).
-		Where("id = ?", identityNRI).
+	err := query.
+		Order("created_at DESC").
+		Offset(offset).
+		Limit(limit).
 		Find(&notes).
 		Error
 	if err != nil {
