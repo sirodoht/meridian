@@ -16,7 +16,7 @@ type Store interface {
 	PutProfile(context.Context, *Profile) error
 	GetProfile(context.Context, string) (*Profile, error)
 	PutNote(context.Context, *Note) error
-	GetNotes(context.Context, string) ([]*Note, error)
+	GetNotes(context.Context, string, int, int) ([]*Note, error)
 	PutSession(context.Context, *Session) error
 	GetSession(context.Context, string) (*Session, error)
 }

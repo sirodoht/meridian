@@ -1,7 +1,6 @@
 package main
 
 import (
-	"context"
 	"fmt"
 	"net/http"
 	"os"
@@ -13,6 +12,7 @@ import (
 	"go.uber.org/zap"
 	"gorm.io/driver/sqlite"
 	"gorm.io/gorm"
+	"moul.io/chizap"
 
 	"nimona.io"
 
@@ -68,49 +68,16 @@ func main() {
 	handlers := internal.NewHandlers(logger, api, meridianStore)
 
 	r := chi.NewRouter()
-	r.Use(middleware.Logger)
+	r.Use(middleware.RequestID)
+	r.Use(middleware.RealIP)
+	r.Use(middleware.Recoverer)
+	r.Use(chizap.New(logger, &chizap.Opts{
+		WithReferer:   true,
+		WithUserAgent: true,
+	}))
 
-	// middleware to check if user is authenticated
-	// TODO: move to internal/middleware.go
-	r.Use(func(next http.Handler) http.Handler {
-		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			var username string
-			isAuthenticated := false
-			c, err := r.Cookie("session")
-			if err != nil {
-				logger.Info("no session cookie")
-			} else {
-				session, err := meridianStore.GetSession(r.Context(), c.Value)
-				if err != nil {
-					logger.Info("failed to get session", zap.Error(err))
-				} else {
-					// TODO: check if session is expired
-					username = session.Username
-					isAuthenticated = true
-				}
-			}
-			ctx := context.WithValue(r.Context(), internal.KeyUsername, username)
-			ctx = context.WithValue(ctx, internal.KeyIsAuthenticated, isAuthenticated)
-
-			next.ServeHTTP(w, r.WithContext(ctx))
-		})
-	})
-
-	// routes
-	// TODO: move to internal/router.go
-	r.Get("/", handlers.RenderIndex)
-	r.Get("/login", handlers.HandleLogin)
-	r.Post("/login", handlers.HandleLogin)
-	r.Get("/signup", handlers.HandleRegister)
-	r.Post("/signup", handlers.HandleRegister)
-	r.Get("/notes/new", handlers.HandleNotesNew)
-	r.Post("/notes/new", handlers.HandleNotesNew)
-
-	// static files
-	if debugMode {
-		fileServer := http.FileServer(http.Dir("./static/"))
-		r.Handle("/static/*", http.StripPrefix("/static", fileServer))
-	}
+	// register handlers
+	handlers.Register(r)
 
 	// serve
 	fmt.Println("Listening on http://127.0.0.1:8000/")

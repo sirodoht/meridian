@@ -2,11 +2,18 @@ package internal
 
 import (
 	"context"
-	"html/template"
+	"embed"
 	"net/http"
 
+	"github.com/go-chi/chi/v5"
 	"go.uber.org/zap"
 )
+
+//go:embed static
+var staticFiles embed.FS
+
+//go:embed templates
+var templateFiles embed.FS
 
 type Handlers struct {
 	logger *zap.Logger
@@ -31,6 +38,50 @@ func NewHandlers(
 	}
 }
 
+func (handlers *Handlers) Register(r *chi.Mux) {
+	// register middleware
+	r.Use(handlers.authMiddleware)
+
+	// register handlers
+	r.Get("/", handlers.HandleIndex)
+	r.Get("/login", handlers.HandleLogin)
+	r.Post("/login", handlers.HandleLogin)
+	r.Get("/signup", handlers.HandleRegister)
+	r.Post("/signup", handlers.HandleRegister)
+	r.Get("/notes", handlers.HandleNotes)
+	r.Get("/notes/new", handlers.HandleNotesNew)
+	r.Post("/notes/new", handlers.HandleNotesNew)
+
+	// static files
+	fs := http.FileServer(http.FS(staticFiles))
+	r.Handle("/static/*", fs)
+}
+
+// middleware to check if user is authenticated
+func (handlers *Handlers) authMiddleware(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		var username string
+		isAuthenticated := false
+		c, err := r.Cookie("session")
+		if err != nil {
+			handlers.logger.Info("no session cookie")
+		} else {
+			session, err := handlers.store.GetSession(r.Context(), c.Value)
+			if err != nil {
+				handlers.logger.Info("failed to get session", zap.Error(err))
+			} else {
+				// TODO: check if session is expired
+				username = session.Username
+				isAuthenticated = true
+			}
+		}
+		ctx := context.WithValue(r.Context(), KeyUsername, username)
+		ctx = context.WithValue(ctx, KeyIsAuthenticated, isAuthenticated)
+
+		next.ServeHTTP(w, r.WithContext(ctx))
+	})
+}
+
 func (handlers *Handlers) valuesFromCtx(ctx context.Context) TemplateValues {
 	values := TemplateValues{}
 	username, ok := ctx.Value(KeyUsername).(string)
@@ -43,25 +94,4 @@ func (handlers *Handlers) valuesFromCtx(ctx context.Context) TemplateValues {
 	}
 
 	return values
-}
-
-func (handlers *Handlers) RenderIndex(
-	w http.ResponseWriter,
-	r *http.Request,
-) {
-	w.Header().Set("Content-Type", "text/html; charset=utf-8")
-	t, err := template.ParseFiles(
-		"internal/templates/layout.html",
-		"internal/templates/index.html",
-	)
-	if err != nil {
-		panic(err)
-	}
-
-	values := handlers.valuesFromCtx(r.Context())
-	err = t.Execute(w, values)
-	if err != nil {
-		panic(err)
-	}
-	handlers.logger.Info("render index success")
 }

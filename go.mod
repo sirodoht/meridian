@@ -3,6 +3,7 @@ module github.com/sirodoht/meridian
 go 1.20
 
 require (
+	github.com/geoah/go-pubsub v0.0.3
 	github.com/go-chi/chi/v5 v5.0.8
 	github.com/google/uuid v1.3.0
 	github.com/vikyd/zero v0.0.0-20190921142904-0f738d0bc858
@@ -10,6 +11,7 @@ require (
 	golang.org/x/crypto v0.7.0
 	gorm.io/driver/sqlite v1.4.4
 	gorm.io/gorm v1.24.6
+	moul.io/chizap v1.0.3
 	nimona.io v0.0.0-20230403170942-692e202a96e7
 )
 
@@ -19,7 +21,7 @@ require (
 	github.com/anacrolix/missinggo/v2 v2.7.1 // indirect
 	github.com/anacrolix/sync v0.4.0 // indirect
 	github.com/davecgh/go-spew v1.1.1 // indirect
-	github.com/geoah/go-pubsub v0.0.3 // indirect
+	github.com/go-chi/chi v1.5.4 // indirect
 	github.com/gobwas/glob v0.2.3 // indirect
 	github.com/golang/mock v1.7.0-rc.1 // indirect
 	github.com/hashicorp/errwrap v1.1.0 // indirect
