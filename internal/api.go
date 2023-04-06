@@ -60,9 +60,29 @@ func (api *api) Register(
 	req *RegisterRequest,
 ) (*RegisterResponse, error) {
 	// create new identity
-	id, err := api.identityStore.NewIdentity("user")
+	// TODO: add missing use, once NRI support for use is added
+	id, err := api.identityStore.NewIdentity("")
 	if err != nil {
 		return nil, fmt.Errorf("failed to create identity: %w", err)
+	}
+
+	// store identity
+	err = api.documentStore.PutDocument(id.Document())
+	if err != nil {
+		return nil, fmt.Errorf("failed to put identity: %w", err)
+	}
+
+	// create new feed
+	feed := &NimonaFeed{
+		Metadata: nimona.Metadata{
+			Owner: id,
+		},
+	}
+
+	// store note feed
+	err = api.documentStore.PutDocument(feed.Document())
+	if err != nil {
+		return nil, fmt.Errorf("failed to put note feed: %w", err)
 	}
 
 	// hash password
@@ -76,10 +96,20 @@ func (api *api) Register(
 		IdentityNRI:  id.String(),
 		Username:     req.Username,
 		PasswordHash: passwordHash,
+		Email:        req.Email,
 	}
 	err = api.meridianStore.PutUser(ctx, user)
 	if err != nil {
 		return nil, fmt.Errorf("failed to put user: %w", err)
+	}
+
+	// update profile
+	_, err = api.UpdateProfile(ctx, &UpdateProfileRequest{
+		IdentityNRI: id.String(),
+		DisplayName: req.Username,
+	})
+	if err != nil {
+		return nil, fmt.Errorf("failed to update profile: %w", err)
 	}
 
 	// create session
