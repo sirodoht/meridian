@@ -3,12 +3,15 @@ package internal
 import (
 	"context"
 	"fmt"
+	"time"
 
+	"github.com/geoah/go-pubsub"
 	"github.com/google/uuid"
 	"go.uber.org/zap"
 	"golang.org/x/crypto/bcrypt"
 
 	"nimona.io"
+	"nimona.io/tilde"
 )
 
 type API interface {
@@ -27,12 +30,17 @@ func NewAPI(
 	documentStore *nimona.DocumentStore,
 	identityStore *nimona.IdentityStore,
 ) API {
-	return &api{
+	api := &api{
 		logger:        logger,
 		meridianStore: meridianStore,
 		documentStore: documentStore,
 		identityStore: identityStore,
 	}
+
+	sub := documentStore.Subscribe()
+	go api.processDocuments(sub)
+
+	return api
 }
 
 type api struct {
@@ -332,6 +340,153 @@ func (api *api) GetNote(
 ) (*GetNoteResponse, error) {
 	// TODO: implement
 	return nil, fmt.Errorf("not implemented")
+}
+
+func (api *api) processDocuments(sub *pubsub.Subscription[*nimona.Document]) {
+	ch := sub.Channel()
+	for {
+		doc := <-ch
+		switch doc.Type() {
+		case "feed":
+			api.processFeedDocument(doc)
+		case "core/stream/patch":
+			api.processPatchDocument(doc)
+		}
+	}
+}
+
+func (api *api) processPatchDocument(doc *nimona.Document) {
+	// convert to patch
+	patch := &nimona.DocumentPatch{}
+	err := patch.FromDocument(doc)
+	if err != nil {
+		api.logger.Error("failed to convert document to patch", zap.Error(err))
+		return
+	}
+
+	// TODO: support more patch operations
+	// we currently support a single operation per patch and a limited
+	// set of operations such as appending notes, and replacing profile
+	if len(patch.Operations) == 0 {
+		api.logger.Info("patch has no operations")
+		return
+	}
+
+	// get the operation's value
+	op := patch.Operations[0]
+	value, ok := op.Value.(tilde.Map)
+	if !ok {
+		api.logger.Info("patch operation value is not a map")
+		return
+	}
+
+	// convert it into a document
+	valueDoc := nimona.NewDocument(value)
+
+	// figure out if it's a note or profile
+	// TODO: should we verify the path?
+	switch valueDoc.Type() {
+	case "note":
+		api.processNoteDocument(valueDoc)
+	case "profile":
+		api.processProfileDocument(valueDoc)
+	}
+}
+
+func (api *api) processNoteDocument(doc *nimona.Document) {
+	// convert to note
+	note := &NimonaNote{}
+	err := note.FromDocument(doc)
+	if err != nil {
+		api.logger.Error("failed to convert document to note", zap.Error(err))
+		return
+	}
+
+	// parse created at
+	createdAt, _ := time.Parse(time.RFC3339, note.Metadata.Timestamp)
+	if createdAt.IsZero() {
+		createdAt = time.Now()
+	}
+
+	// create new note
+	n := &Note{
+		IdentityNRI: note.Metadata.Owner.String(),
+		NoteID:      nimona.NewDocumentID(doc).String(),
+		Content:     note.Content,
+		CreatedAt:   createdAt,
+	}
+	ctx := context.Background()
+	err = api.meridianStore.PutNote(ctx, n)
+	if err != nil {
+		api.logger.Error("failed to put note", zap.Error(err))
+		return
+	}
+}
+
+func (api *api) processProfileDocument(doc *nimona.Document) {
+	// convert to profile
+	profile := &NimonaProfile{}
+	err := profile.FromDocument(doc)
+	if err != nil {
+		api.logger.Error("failed to convert document to profile", zap.Error(err))
+		return
+	}
+
+	// create new profile
+	p := &Profile{
+		IdentityNRI: profile.Metadata.Owner.String(),
+		DisplayName: profile.DisplayName,
+		Description: profile.Description,
+		AvatarURL:   profile.AvatarURL,
+	}
+	ctx := context.Background()
+	err = api.meridianStore.PutProfile(ctx, p)
+	if err != nil {
+		api.logger.Error("failed to put profile", zap.Error(err))
+		return
+	}
+}
+
+func (api *api) processFeedDocument(doc *nimona.Document) {
+	// convert to feed
+	feed := &NimonaFeed{}
+	err := feed.FromDocument(doc)
+	if err != nil {
+		api.logger.Error("failed to convert document to feed", zap.Error(err))
+		return
+	}
+
+	// create new profile
+	profile := &Profile{
+		IdentityNRI: feed.Metadata.Owner.String(),
+	}
+	ctx := context.Background()
+	err = api.meridianStore.PutProfile(ctx, profile)
+	if err != nil {
+		api.logger.Error("failed to put profile", zap.Error(err))
+		return
+	}
+}
+
+func (api *api) getSigningContext(identityNRI string) (*nimona.SigningContext, error) {
+	// get identity
+	id, err := nimona.ParseIdentityNRI(identityNRI)
+	if err != nil {
+		return nil, fmt.Errorf("invalid identity nri: %w", err)
+	}
+
+	// get keypair
+	ckp, _, err := api.identityStore.GetKeyPairs(id)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get identity: %w", err)
+	}
+
+	// create signing context
+	sctx := &nimona.SigningContext{
+		Identity:   id,
+		PrivateKey: ckp.PrivateKey,
+	}
+	return sctx, nil
 }
 
 func hashPassword(password string) (string, error) {
