@@ -280,30 +280,48 @@ func (api *api) CreateNote(
 	if err != nil {
 		return nil, fmt.Errorf("failed to parse identity: %w", err)
 	}
-	kg, err := api.identityStore.IdentityStore.Get(*id)
-	if err != nil {
-		return nil, fmt.Errorf("failed to get identity: %w", err)
-	}
-	kp, err := api.identityStore.KeyPairStore.Get(kg.Keys)
-	if err != nil {
-		return nil, fmt.Errorf("failed to get keypair: %w", err)
-	}
 
-	// get feed for identity
-	// TODO: get feed from identity
+	// figure out feed root id
+	feed := &NimonaFeed{
+		Metadata: nimona.Metadata{
+			Owner: id,
+		},
+	}
+	feedRootID := nimona.NewDocumentID(feed.Document())
+
+	// get signing context
+	sctx, err := api.getSigningContext(user.IdentityNRI)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get signing context: %w", err)
+	}
 
 	// create note
-	// TODO: add metadata
 	note := &NimonaNote{
+		Metadata: nimona.Metadata{
+			Owner:     id,
+			Timestamp: time.Now().UTC().Format(time.RFC3339),
+		},
 		Content: req.Content,
 	}
-	// TODO: sign note
-	// TODO: create patch
-	// TODO: store document
-	// TODO: apply patch
 
-	fmt.Println(kp, note)
-	return nil, fmt.Errorf("not implemented")
+	patchDoc, err := api.documentStore.CreatePatch(
+		feedRootID,
+		"append",
+		"notes",
+		note.Map(),
+		*sctx,
+	)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create patch: %w", err)
+	}
+
+	// store patch
+	err = api.documentStore.PutDocument(patchDoc)
+	if err != nil {
+		return nil, fmt.Errorf("failed to put profile: %w", err)
+	}
+
+	return &CreateNoteResponse{}, nil
 }
 
 type (
