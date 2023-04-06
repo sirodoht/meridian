@@ -162,18 +162,61 @@ type (
 		Description string `json:"description,omitempty"`
 		AvatarURL   string `json:"avatarUrl,omitempty"`
 	}
-	UpdateProfileResponse struct {
-		Identity *nimona.Identity `json:"identity"`
-		Profile  *NimonaProfile   `json:"profile"`
-	}
+	UpdateProfileResponse struct{}
 )
 
 func (api *api) UpdateProfile(
 	ctx context.Context,
 	req *UpdateProfileRequest,
 ) (*UpdateProfileResponse, error) {
-	// TODO: implement
-	return nil, fmt.Errorf("not implemented")
+	// get identity
+	id, err := nimona.ParseIdentityNRI(req.IdentityNRI)
+	if err != nil {
+		return nil, fmt.Errorf("failed to parse identity: %w", err)
+	}
+
+	// figure out feed root id
+	feed := &NimonaFeed{
+		Metadata: nimona.Metadata{
+			Owner: id,
+		},
+	}
+	feedRootID := nimona.NewDocumentID(feed.Document())
+
+	// get signing context
+	sctx, err := api.getSigningContext(req.IdentityNRI)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get signing context: %w", err)
+	}
+
+	// create profile
+	profile := &NimonaProfile{
+		Metadata: nimona.Metadata{
+			Owner: id,
+		},
+		DisplayName: req.DisplayName,
+		Description: req.Description,
+		AvatarURL:   req.AvatarURL,
+	}
+
+	patchDoc, err := api.documentStore.CreatePatch(
+		feedRootID,
+		"replace",
+		"profile",
+		profile.Map(),
+		*sctx,
+	)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create patch: %w", err)
+	}
+
+	// store patch
+	err = api.documentStore.PutDocument(patchDoc)
+	if err != nil {
+		return nil, fmt.Errorf("failed to put profile: %w", err)
+	}
+
+	return &UpdateProfileResponse{}, nil
 }
 
 type (
