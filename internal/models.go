@@ -23,6 +23,15 @@ type (
 		CreatedAt   time.Time
 		UpdatedAt   time.Time
 	}
+	Follow struct {
+		FollowerNRI string `gorm:"type:varchar(255);primary_key"`
+		FolloweeNRI string `gorm:"type:varchar(255);primary_key"`
+		CreatedAt   time.Time
+		UpdatedAt   time.Time
+		// Virtual
+		Follower *Profile `gorm:"foreignKey:FollowerNRI;references:IdentityNRI"`
+		Followee *Profile `gorm:"foreignKey:FolloweeNRI;references:IdentityNRI"`
+	}
 	Note struct {
 		IdentityNRI string
 		NoteID      string `gorm:"type:varchar(255);primary_key"`

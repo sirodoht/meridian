@@ -17,6 +17,9 @@ type Store interface {
 	GetProfile(context.Context, string) (*Profile, error)
 	PutNote(context.Context, *Note) error
 	GetNotes(context.Context, string, int, int) ([]*Note, error)
+	PutFollow(context.Context, *Follow) error
+	GetFollowers(context.Context, string) ([]*Follow, error)
+	GetFollowees(context.Context, string) ([]*Follow, error)
 	PutSession(context.Context, *Session) error
 	GetSession(context.Context, string) (*Session, error)
 }
@@ -29,6 +32,7 @@ func NewSQLStore(gdb *gorm.DB) Store {
 	gdb.AutoMigrate(
 		&User{},
 		&Profile{},
+		&Follow{},
 		&Note{},
 		&Session{},
 	)
@@ -185,6 +189,76 @@ func (s *SQLStore) GetNotes(
 	}
 
 	return notes, nil
+}
+
+func (s *SQLStore) PutFollow(
+	ctx context.Context,
+	req *Follow,
+) error {
+	if req == nil {
+		return fmt.Errorf("failed to put follow: nil request")
+	}
+
+	err := s.db.
+		WithContext(ctx).
+		Clauses(
+			clause.OnConflict{
+				UpdateAll: true,
+			},
+		).
+		Create(req).
+		Error
+	if err != nil {
+		return fmt.Errorf("failed to put follow: %w", err)
+	}
+
+	return nil
+}
+
+func (s *SQLStore) GetFollowers(
+	ctx context.Context,
+	followeeNRI string,
+) ([]*Follow, error) {
+	if followeeNRI == "" {
+		return nil, fmt.Errorf("failed to get followers: nil request")
+	}
+
+	var follows []*Follow
+	err := s.db.
+		WithContext(ctx).
+		Preload("Follower").
+		Preload("Followee").
+		Where("followee_nri = ?", followeeNRI).
+		Find(&follows).
+		Error
+	if err != nil {
+		return nil, fmt.Errorf("failed to get follows: %w", err)
+	}
+
+	return follows, nil
+}
+
+func (s *SQLStore) GetFollowees(
+	ctx context.Context,
+	followerNRI string,
+) ([]*Follow, error) {
+	if followerNRI == "" {
+		return nil, fmt.Errorf("failed to get followees: nil request")
+	}
+
+	var follows []*Follow
+	err := s.db.
+		WithContext(ctx).
+		Preload("Follower").
+		Preload("Followee").
+		Where("follower_nri = ?", followerNRI).
+		Find(&follows).
+		Error
+	if err != nil {
+		return nil, fmt.Errorf("failed to get follows: %w", err)
+	}
+
+	return follows, nil
 }
 
 func (s *SQLStore) PutSession(
