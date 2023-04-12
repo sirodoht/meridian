@@ -46,6 +46,7 @@ func (handlers *Handlers) Register(r *chi.Mux) {
 	r.Get("/", handlers.HandleIndex)
 	r.Get("/login", handlers.HandleLogin)
 	r.Post("/login", handlers.HandleLogin)
+	r.Post("/logout", handlers.HandleLogout)
 	r.Get("/signup", handlers.HandleRegister)
 	r.Post("/signup", handlers.HandleRegister)
 	r.Get("/notes", handlers.HandleNotes)
