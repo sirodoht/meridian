@@ -1,0 +1,17 @@
+{{define "page"}}
+<main>
+    <h1>profile</h1>
+    <h2>followees</h2>
+    <ul>
+        {{ range .Followees }}
+            <li>{{ . }}</li>
+        {{ end }}
+    </ul>
+    <h2>followers</h2>
+    <ul>
+        {{ range .Followers }}
+            <li>{{ . }}</li>
+        {{ end }}
+    </ul>
+</main>
+{{end}}
