@@ -9,12 +9,12 @@ require (
 	github.com/kelseyhightower/envconfig v1.4.0
 	github.com/vikyd/zero v0.0.0-20190921142904-0f738d0bc858
 	go.uber.org/zap v1.24.0
-	golang.org/x/crypto v0.7.0
+	golang.org/x/crypto v0.8.0
 	gorm.io/driver/sqlite v1.4.4
-	gorm.io/gorm v1.24.6
+	gorm.io/gorm v1.25.0
 	moul.io/chizap v1.0.3
 	moul.io/zapgorm2 v1.3.0
-	nimona.io v0.0.0-20230403170942-692e202a96e7
+	nimona.io v0.0.0-20230412221804-aeded3c4d222
 )
 
 require (

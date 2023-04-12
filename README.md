@@ -14,6 +14,10 @@ make serve
 - `DEBUG` - enable debug mode (default: `false`)
 - `BIND_ADDRESS` - address to bind to (default: `:8000`)
 
+## Development
+
+- `make codegen` - generate document helpers for models
+
 ## License
 
 MIT
