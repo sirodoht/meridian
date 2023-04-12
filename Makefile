@@ -11,7 +11,7 @@ format:
 
 .PHONY: serve
 serve:
-	CGO_ENABLED=0 modd
+	modd
 
 .PHONY: build
 build:
