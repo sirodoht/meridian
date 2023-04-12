@@ -7,9 +7,17 @@
             <p>{{ .Content }}</p>
             <p>by 
                 <span title="{{ .IdentityNRI }}">
-                    {{ .Profile.DisplayName }}
+                    <a href="/profile/{{ identityFromNRI .IdentityNRI }}">
+                        {{ .Profile.DisplayName }}
+                    </a>
                 </span>
                  at {{ .CreatedAt }}</p>
+                 {{ if $.User }}
+                 <form class="form-inline" action="/follow" method="post">
+                     <input type="hidden" name="followee" value="{{ .IdentityNRI }}">
+                     (<input type="submit" value="follow {{ .Profile.DisplayName }}">)
+                 </form>
+                 {{ end }}
         </li>
         {{ end }}
 </main>

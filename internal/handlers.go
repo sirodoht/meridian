@@ -52,6 +52,7 @@ func (handlers *Handlers) Register(r *chi.Mux) {
 	r.Get("/notes", handlers.HandleNotes)
 	r.Get("/notes/new", handlers.HandleNotesNew)
 	r.Post("/notes/new", handlers.HandleNotesNew)
+	r.Post("/follow", handlers.HandleFollow)
 	r.Get("/profile/{identity}", handlers.HandleProfile)
 
 	// static files
