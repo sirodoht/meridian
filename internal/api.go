@@ -22,6 +22,9 @@ type API interface {
 	CreateNote(context.Context, *CreateNoteRequest) (*CreateNoteResponse, error)
 	GetNotes(context.Context, *GetNotesRequest) (*GetNotesResponse, error)
 	GetNote(context.Context, *GetNoteRequest) (*GetNoteResponse, error)
+	Follow(context.Context, *FollowRequest) (*FollowResponse, error)
+	GetFollowees(context.Context, *GetFolloweesRequest) (*GetFolloweesResponse, error)
+	GetFollowers(context.Context, *GetFollowersRequest) (*GetFollowersResponse, error)
 }
 
 func NewAPI(
@@ -379,6 +382,131 @@ func (api *api) GetNote(
 	return nil, fmt.Errorf("not implemented")
 }
 
+type (
+	FollowRequest struct {
+		// TODO: should this be a username?
+		IdentityNRI         string `json:"identity"`
+		FolloweeIdentityNRI string `json:"followeeIdentity"`
+	}
+	FollowResponse struct{}
+)
+
+func (api *api) Follow(
+	ctx context.Context,
+	req *FollowRequest,
+) (*FollowResponse, error) {
+	// get identity
+	id, err := nimona.ParseIdentityNRI(req.IdentityNRI)
+	if err != nil {
+		return nil, fmt.Errorf("failed to parse identity: %w", err)
+	}
+
+	// get followee identity
+	followeeID, err := nimona.ParseIdentityNRI(req.FolloweeIdentityNRI)
+	if err != nil {
+		return nil, fmt.Errorf("failed to parse followee identity: %w", err)
+	}
+
+	// figure out feed root id
+	feed := &NimonaFeed{
+		Metadata: nimona.Metadata{
+			Owner: id,
+		},
+	}
+	feedRootID := nimona.NewDocumentID(feed.Document())
+
+	// get signing context
+	sctx, err := api.getSigningContext(req.IdentityNRI)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get signing context: %w", err)
+	}
+	// create follow
+	follow := &NimonaFollow{
+		Metadata: nimona.Metadata{
+			Owner:     id,
+			Timestamp: time.Now().UTC().Format(time.RFC3339),
+		},
+		Identity: *followeeID,
+	}
+
+	patchDoc, err := api.documentStore.CreatePatch(
+		feedRootID,
+		"append",
+		"folowees",
+		follow.Map(),
+		*sctx,
+	)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create patch: %w", err)
+	}
+
+	// store patch
+	err = api.documentStore.PutDocument(patchDoc)
+	if err != nil {
+		return nil, fmt.Errorf("failed to put profile: %w", err)
+	}
+
+	return &FollowResponse{}, nil
+}
+
+type (
+	GetFollowersRequest struct {
+		IdentityNRI string `json:"identity"`
+	}
+	GetFollowersResponse struct {
+		Followers []string `json:"followers"`
+	}
+)
+
+func (api *api) GetFollowers(
+	ctx context.Context,
+	req *GetFollowersRequest,
+) (*GetFollowersResponse, error) {
+	// get followers
+	follows, err := api.meridianStore.GetFollowers(ctx, req.IdentityNRI)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get followers: %w", err)
+	}
+
+	followers := []string{}
+	for _, follow := range follows {
+		followers = append(followers, follow.FollowerNRI)
+	}
+
+	return &GetFollowersResponse{
+		Followers: followers,
+	}, nil
+}
+
+type (
+	GetFolloweesRequest struct {
+		IdentityNRI string `json:"identity"`
+	}
+	GetFolloweesResponse struct {
+		Followees []string `json:"followees"`
+	}
+)
+
+func (api *api) GetFollowees(
+	ctx context.Context,
+	req *GetFolloweesRequest,
+) (*GetFolloweesResponse, error) {
+	// get followees
+	follows, err := api.meridianStore.GetFollowees(ctx, req.IdentityNRI)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get followees: %w", err)
+	}
+
+	followees := []string{}
+	for _, follow := range follows {
+		followees = append(followees, follow.FolloweeNRI)
+	}
+
+	return &GetFolloweesResponse{
+		Followees: followees,
+	}, nil
+}
+
 func (api *api) processDocuments(sub *pubsub.Subscription[*nimona.Document]) {
 	ch := sub.Channel()
 	for {
@@ -420,13 +548,16 @@ func (api *api) processPatchDocument(doc *nimona.Document) {
 	// convert it into a document
 	valueDoc := nimona.NewDocument(value)
 
-	// figure out if it's a note or profile
+	// assume the value is a document,
+	// and try to figure out its type
 	// TODO: should we verify the path?
 	switch valueDoc.Type() {
 	case "note":
 		api.processNoteDocument(valueDoc)
 	case "profile":
 		api.processProfileDocument(valueDoc)
+	case "follow":
+		api.processFollowDocument(valueDoc)
 	}
 }
 
@@ -456,6 +587,35 @@ func (api *api) processNoteDocument(doc *nimona.Document) {
 	err = api.meridianStore.PutNote(ctx, n)
 	if err != nil {
 		api.logger.Error("failed to put note", zap.Error(err))
+		return
+	}
+}
+
+func (api *api) processFollowDocument(doc *nimona.Document) {
+	// convert to follow
+	follow := &NimonaFollow{}
+	err := follow.FromDocument(doc)
+	if err != nil {
+		api.logger.Error("failed to convert document to follow", zap.Error(err))
+		return
+	}
+
+	// parse created at
+	createdAt, _ := time.Parse(time.RFC3339, follow.Metadata.Timestamp)
+	if createdAt.IsZero() {
+		createdAt = time.Now()
+	}
+
+	// create new follow
+	f := &Follow{
+		FollowerNRI: follow.Metadata.Owner.String(),
+		FolloweeNRI: follow.Identity.String(),
+		CreatedAt:   createdAt,
+	}
+	ctx := context.Background()
+	err = api.meridianStore.PutFollow(ctx, f)
+	if err != nil {
+		api.logger.Error("failed to put follow", zap.Error(err))
 		return
 	}
 }
