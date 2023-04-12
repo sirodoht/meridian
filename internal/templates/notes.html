@@ -1,0 +1,16 @@
+{{ define "page" }}
+<main>
+    <h1>all notes</h1>
+    <ul>
+        {{ range .Notes }}
+        <li>
+            <p>{{ .Content }}</p>
+            <p>by 
+                <span title="{{ .IdentityNRI }}">
+                    {{ .Profile.DisplayName }}
+                </span>
+                 at {{ .CreatedAt }}</p>
+        </li>
+        {{ end }}
+</main>
+{{ end }}

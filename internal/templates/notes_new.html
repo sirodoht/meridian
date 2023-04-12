@@ -1,4 +1,4 @@
-{{define "page"}}
+{{ define "page" }}
 <main>
     <h1>post new note</h1>
     <form method="post">
@@ -6,7 +6,10 @@
             <label for="id_body">body</label>
             <textarea rows="10" name="body" id="id_body"></textarea>
         </p>
+        {{ if .Error }}
+        <div class="error">{{ .Error }}</div>
+        {{ end }}
         <input type="submit" value="save">
     </form>
 </main>
-{{end}}
+{{ end }}

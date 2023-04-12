@@ -1,31 +1,31 @@
 package main
 
 import (
-	"context"
 	"fmt"
-	"log"
 	"net/http"
 	"os"
+	"strconv"
 	"time"
-
-	"github.com/sirodoht/meridian/internal"
-	"go.uber.org/zap"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
-	"github.com/jmoiron/sqlx"
-	_ "modernc.org/sqlite"
+	"go.uber.org/zap"
+	"gorm.io/driver/sqlite"
+	"gorm.io/gorm"
+	"moul.io/chizap"
+
+	"nimona.io"
+
+	"github.com/sirodoht/meridian/internal"
 )
 
 func main() {
-	debugMode := os.Getenv("DEBUG")
+	debugMode, _ := strconv.ParseBool(os.Getenv("DEBUG"))
 
 	databaseDSN := os.Getenv("DATABASE_DSN")
-	db, err := sqlx.Open("sqlite", databaseDSN)
-	if err != nil {
-		log.Fatal(err)
+	if databaseDSN == "" {
+		databaseDSN = "meridian.sqlite"
 	}
-	defer db.Close()
 
 	logger, err := zap.NewProduction()
 	if err != nil {
@@ -33,41 +33,51 @@ func main() {
 	}
 	defer logger.Sync() // nolint: errcheck
 
-	store := internal.NewSQLStore(db)
-	handlers := internal.NewHandlers(store, logger)
+	db, err := gorm.Open(
+		sqlite.Open(databaseDSN),
+		&gorm.Config{},
+	)
+	if err != nil {
+		logger.Fatal("failed to open database", zap.Error(err))
+	}
+
+	// Enable debug mode
+	if debugMode {
+		db = db.Debug()
+	}
+
+	// Construct a new document store
+	docStore, err := nimona.NewDocumentStore(db)
+	if err != nil {
+		logger.Fatal("failed to create document store", zap.Error(err))
+	}
+
+	// Construct a new identity store
+	idStore, err := nimona.NewIdentityStore(db)
+	if err != nil {
+		logger.Fatal("failed to create identity store", zap.Error(err))
+	}
+
+	// Construct a new meridian store
+	meridianStore := internal.NewSQLStore(db)
+
+	// Construct a new meridian api
+	api := internal.NewAPI(logger, meridianStore, docStore, idStore)
+
+	// Construct a new meridian router
+	handlers := internal.NewHandlers(logger, api, meridianStore)
 
 	r := chi.NewRouter()
-	r.Use(middleware.Logger)
+	r.Use(middleware.RequestID)
+	r.Use(middleware.RealIP)
+	r.Use(middleware.Recoverer)
+	r.Use(chizap.New(logger, &chizap.Opts{
+		WithReferer:   true,
+		WithUserAgent: true,
+	}))
 
-	// middleware to check if user is authenticated
-	r.Use(func(next http.Handler) http.Handler {
-		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			var username string
-			isAuthenticated := false
-			c, err := r.Cookie("session")
-			if err != nil {
-				fmt.Println(err)
-			} else {
-				username = store.GetUsernameSession(r.Context(), c.Value)
-				if err == nil {
-					isAuthenticated = true
-				}
-			}
-			ctx := context.WithValue(r.Context(), internal.KeyUsername, username)
-			ctx = context.WithValue(ctx, internal.KeyIsAuthenticated, isAuthenticated)
-
-			next.ServeHTTP(w, r.WithContext(ctx))
-		})
-	})
-
-	// routes
-	r.Get("/", handlers.RenderIndex)
-
-	// static files
-	if debugMode == "1" {
-		fileServer := http.FileServer(http.Dir("./static/"))
-		r.Handle("/static/*", http.StripPrefix("/static", fileServer))
-	}
+	// register handlers
+	handlers.Register(r)
 
 	// serve
 	fmt.Println("Listening on http://127.0.0.1:8000/")

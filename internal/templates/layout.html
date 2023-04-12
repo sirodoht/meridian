@@ -9,13 +9,13 @@
     <body>
         <nav>
             <a href="/">home</a>
-            {{if .IsAuthenticated}}
+            {{ if .User }}
             <a href="/dashboard">dashboard</a>
-            <a href="/docs">all docs</a>
-            <a href="/new/doc">new document</a>
+            <a href="/notes">all notes</a>
+            <a href="/notes/new">new note</a>
 
             <span>
-                {{ .Username }}
+                {{ .User.Username }}
                 <form class="form-inline" action="/logout" method="post">(<input type="submit" value="logout">)</form>
             </span>
 
@@ -24,6 +24,6 @@
             <a href="/login">login</a>
             {{end}}
         </nav>
-        {{template "page" .}}
+        {{ template "page" . }}
     </body>
 </html>
