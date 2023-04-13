@@ -4,13 +4,13 @@
     <h2>followees</h2>
     <ul>
         {{ range .Followees }}
-            <li>{{ . }}</li>
+            <li>{{ .NRI }}</li>
         {{ end }}
     </ul>
     <h2>followers</h2>
     <ul>
         {{ range .Followers }}
-            <li>{{ . }}</li>
+            <li>{{ .NRI }}</li>
         {{ end }}
     </ul>
 </main>

@@ -434,13 +434,13 @@ func (t *NimonaFollow) Map() tilde.Map {
 		}
 	}
 
-	// # t.Identity
+	// # t.KeygraphID
 	//
-	// Type: nimona.Identity, Kind: struct, TildeKind: Map
-	// IsSlice: false, IsStruct: true, IsPointer: false
+	// Type: nimona.KeygraphID, Kind: array, TildeKind: Ref
+	// IsSlice: false, IsStruct: false, IsPointer: false
 	{
-		if !zero.IsZeroVal(t.Identity) {
-			m.Set("identity", t.Identity.Map())
+		if !zero.IsZeroVal(t.KeygraphID) {
+			m.Set("identity", tilde.Ref(t.KeygraphID))
 		}
 	}
 
@@ -487,17 +487,14 @@ func (t *NimonaFollow) FromMap(d tilde.Map) error {
 		}
 	}
 
-	// # t.Identity
+	// # t.KeygraphID
 	//
-	// Type: nimona.Identity, Kind: struct, TildeKind: Map
-	// IsSlice: false, IsStruct: true, IsPointer: false
+	// Type: nimona.KeygraphID, Kind: array, TildeKind: Ref
+	// IsSlice: false, IsStruct: false, IsPointer: false
 	{
 		if v, err := d.Get("identity"); err == nil {
-			if v, ok := v.(tilde.Map); ok {
-				e := nimona.Identity{}
-				d := nimona.NewDocument(v)
-				e.FromDocument(d)
-				t.Identity = e
+			if v, ok := v.(tilde.Ref); ok {
+				t.KeygraphID = nimona.KeygraphID(v)
 			}
 		}
 	}

@@ -94,8 +94,8 @@ func main() {
 		logger.Fatal("failed to create document store", zap.Error(err))
 	}
 
-	// Construct a new identity store
-	idStore, err := nimona.NewIdentityStore(db)
+	// Construct a new keygraph store
+	kgStore, err := nimona.NewKeygraphStore(db)
 	if err != nil {
 		logger.Fatal("failed to create identity store", zap.Error(err))
 	}
@@ -104,7 +104,7 @@ func main() {
 	meridianStore := internal.NewSQLStore(db)
 
 	// Construct a new meridian api
-	api := internal.NewAPI(logger, meridianStore, docStore, idStore)
+	api := internal.NewAPI(logger, meridianStore, docStore, kgStore)
 
 	// Construct a new meridian router
 	handlers := internal.NewHandlers(logger, api, meridianStore)

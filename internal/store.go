@@ -6,6 +6,8 @@ import (
 
 	"gorm.io/gorm"
 	"gorm.io/gorm/clause"
+
+	"nimona.io"
 )
 
 var ErrNotFound = fmt.Errorf("not found")
@@ -18,8 +20,8 @@ type Store interface {
 	PutNote(context.Context, *Note) error
 	GetNotes(context.Context, string, int, int) ([]*Note, error)
 	PutFollow(context.Context, *Follow) error
-	GetFollowers(context.Context, string) ([]*Follow, error)
-	GetFollowees(context.Context, string) ([]*Follow, error)
+	GetFollowers(context.Context, nimona.KeygraphID) ([]*Follow, error)
+	GetFollowees(context.Context, nimona.KeygraphID) ([]*Follow, error)
 	PutSession(context.Context, *Session) error
 	GetSession(context.Context, string) (*Session, error)
 }
@@ -86,7 +88,7 @@ func (s *SQLStore) GetUser(
 	}
 
 	// TODO: improve not found check
-	if user.IdentityNRI == "" {
+	if user.KeygraphID.IsEmpty() {
 		return nil, ErrNotFound
 	}
 
@@ -174,7 +176,7 @@ func (s *SQLStore) GetNotes(
 		Preload("Profile")
 
 	if identityNRI != "" {
-		query = query.Where("identity_nri = ?", identityNRI)
+		query = query.Where("identity = ?", identityNRI)
 	}
 
 	var notes []*Note
@@ -217,18 +219,16 @@ func (s *SQLStore) PutFollow(
 
 func (s *SQLStore) GetFollowers(
 	ctx context.Context,
-	followeeNRI string,
+	followee nimona.KeygraphID,
 ) ([]*Follow, error) {
-	if followeeNRI == "" {
+	if followee.IsEmpty() {
 		return nil, fmt.Errorf("failed to get followers: nil request")
 	}
 
 	var follows []*Follow
 	err := s.db.
 		WithContext(ctx).
-		Preload("Follower").
-		Preload("Followee").
-		Where("followee_nri = ?", followeeNRI).
+		Where("followee = ?", followee).
 		Find(&follows).
 		Error
 	if err != nil {
@@ -240,18 +240,16 @@ func (s *SQLStore) GetFollowers(
 
 func (s *SQLStore) GetFollowees(
 	ctx context.Context,
-	followerNRI string,
+	follower nimona.KeygraphID,
 ) ([]*Follow, error) {
-	if followerNRI == "" {
+	if follower.IsEmpty() {
 		return nil, fmt.Errorf("failed to get followees: nil request")
 	}
 
 	var follows []*Follow
 	err := s.db.
 		WithContext(ctx).
-		Preload("Follower").
-		Preload("Followee").
-		Where("follower_nri = ?", followerNRI).
+		Where("follower = ?", follower).
 		Find(&follows).
 		Error
 	if err != nil {

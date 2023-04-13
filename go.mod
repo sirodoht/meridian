@@ -14,7 +14,7 @@ require (
 	gorm.io/gorm v1.25.0
 	moul.io/chizap v1.0.3
 	moul.io/zapgorm2 v1.3.0
-	nimona.io v0.0.0-20230412221804-aeded3c4d222
+	nimona.io v0.0.0-20230413170434-7aa8045c99c3
 )
 
 require (

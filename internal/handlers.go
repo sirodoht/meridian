@@ -53,7 +53,7 @@ func (handlers *Handlers) Register(r *chi.Mux) {
 	r.Get("/notes/new", handlers.HandleNotesNew)
 	r.Post("/notes/new", handlers.HandleNotesNew)
 	r.Post("/follow", handlers.HandleFollow)
-	r.Get("/profile/{identity}", handlers.HandleProfile)
+	r.Get("/profile/{keygraphID}", handlers.HandleProfile)
 
 	// static files
 	fs := http.FileServer(http.FS(staticFiles))
