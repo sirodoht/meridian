@@ -58,6 +58,10 @@ type (
 		Username string `json:"username"`
 		Password string `json:"password"`
 		Email    string `json:"email"`
+		// profile
+		DisplayName string `json:"displayName"`
+		Description string `json:"description"`
+		AvatarURL   string `json:"avatarUrl"`
 	}
 	RegisterResponse struct {
 		User       *User             `json:"user"`
@@ -120,7 +124,9 @@ func (api *api) Register(
 	// update profile
 	_, err = api.UpdateProfile(ctx, &UpdateProfileRequest{
 		KeygraphID:  id,
-		DisplayName: req.Username,
+		DisplayName: req.DisplayName,
+		Description: req.Description,
+		AvatarURL:   req.AvatarURL,
 	})
 	if err != nil {
 		return nil, fmt.Errorf("failed to update profile: %w", err)
@@ -259,8 +265,9 @@ func (api *api) UpdateProfile(
 
 type (
 	CreateNoteRequest struct {
-		Username string `json:"username"`
-		Content  string `json:"content"`
+		Username  string    `json:"username"`
+		Content   string    `json:"content"`
+		Timestamp time.Time `json:"timestamp"`
 	}
 	CreateNoteResponse struct{}
 )
@@ -290,10 +297,15 @@ func (api *api) CreateNote(
 	}
 
 	// create note
+	ts := time.Now().UTC().Format(time.RFC3339)
+	if !req.Timestamp.IsZero() {
+		ts = req.Timestamp.UTC().Format(time.RFC3339)
+	}
+
 	note := &NimonaNote{
 		Metadata: nimona.Metadata{
 			Owner:     user.KeygraphID,
-			Timestamp: time.Now().UTC().Format(time.RFC3339),
+			Timestamp: ts,
 		},
 		Content: req.Content,
 	}

@@ -17,6 +17,7 @@ make serve
 ## Development
 
 - `make codegen` - generate document helpers for models
+- `GET /dev/populate` - populate database with test data
 
 ## License
 

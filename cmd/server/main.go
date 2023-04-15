@@ -69,6 +69,7 @@ func main() {
 	)
 	zaplogger.SetAsDefault()
 	zaplogger.LogLevel = gormlogger.Info
+	zaplogger.SlowThreshold = time.Second
 
 	// Construct a new gorm database
 	db, err := gorm.Open(

@@ -55,6 +55,10 @@ func (handlers *Handlers) Register(r *chi.Mux) {
 	r.Post("/follow", handlers.HandleFollow)
 	r.Get("/profile/{keygraphID}", handlers.HandleProfile)
 
+	// register dev handlers
+	// TODO: remove in production
+	r.Get("/dev/populate", handlers.HandlePopulate)
+
 	// static files
 	fs := http.FileServer(http.FS(staticFiles))
 	r.Handle("/static/*", fs)
