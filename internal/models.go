@@ -36,7 +36,7 @@ type (
 		CreatedAt  time.Time
 		UpdatedAt  time.Time
 		// Virtual
-		Profile *Profile `gorm:"foreignKey:KeygraphID;references:KeygraphID"`
+		Profile Profile `gorm:"foreignKey:KeygraphID;references:KeygraphID"`
 	}
 )
 
