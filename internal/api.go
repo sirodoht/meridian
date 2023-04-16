@@ -47,7 +47,12 @@ func NewAPI(
 		keygraphStore: keygraphStore,
 	}
 
-	sub := documentStore.Subscribe()
+	sub := documentStore.Subscribe(
+		&nimona.SubscriptionOptions{
+			BufferSize:  100,
+			AckDeadline: 5 * time.Second,
+		},
+	)
 	go api.processDocuments(sub)
 
 	return api

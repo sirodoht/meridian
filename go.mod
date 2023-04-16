@@ -4,7 +4,7 @@ go 1.20
 
 require (
 	github.com/davecgh/go-spew v1.1.1
-	github.com/geoah/go-pubsub v0.0.3
+	github.com/geoah/go-pubsub v0.0.5
 	github.com/go-chi/chi/v5 v5.0.8
 	github.com/go-faker/faker/v4 v4.1.0
 	github.com/google/uuid v1.3.0
@@ -16,7 +16,7 @@ require (
 	gorm.io/gorm v1.25.0
 	moul.io/chizap v1.0.3
 	moul.io/zapgorm2 v1.3.0
-	nimona.io v0.0.0-20230413170434-7aa8045c99c3
+	nimona.io v0.0.0-20230416210820-adefaab7a195
 )
 
 require (
