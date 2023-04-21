@@ -1,6 +1,14 @@
 {{define "page"}}
 <main>
     <h1>profile</h1>
+    <ul>
+        <li>Keygraph ID: {{ .Profile.KeygraphID }}</li>
+        {{- if .Profile.Alias }}
+        <li>Alias: {{ .Profile.Alias.String }}</li>
+        {{- end }}
+        <li>Name: {{ .Profile.DisplayName }}</li>
+        <li>Description: {{ .Profile.Description }}</li>
+    </ul>
     <h2>followees</h2>
     <ul>
         {{ range .Followees }}

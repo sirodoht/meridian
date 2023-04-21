@@ -16,7 +16,7 @@ type Store interface {
 	PutUser(context.Context, *User) error
 	GetUser(context.Context, string) (*User, error)
 	PutProfile(context.Context, *Profile) error
-	GetProfile(context.Context, string) (*Profile, error)
+	GetProfile(context.Context, nimona.KeygraphID) (*Profile, error)
 	PutNote(context.Context, *Note) error
 	GetNotes(context.Context, string, int, int) ([]*Note, error)
 	PutFollow(context.Context, *Follow) error
@@ -121,16 +121,16 @@ func (s *SQLStore) PutProfile(
 
 func (s *SQLStore) GetProfile(
 	ctx context.Context,
-	identityNRI string,
+	keygraphID nimona.KeygraphID,
 ) (*Profile, error) {
-	if identityNRI == "" {
+	if keygraphID.IsEmpty() {
 		return nil, fmt.Errorf("failed to get profile: nil request")
 	}
 
 	var profile Profile
 	err := s.db.
 		WithContext(ctx).
-		Where("id = ?", identityNRI).
+		Where("keygraph_id = ?", keygraphID).
 		First(&profile).
 		Error
 	if err != nil {

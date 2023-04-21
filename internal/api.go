@@ -29,6 +29,7 @@ type API interface {
 
 type api struct {
 	logger        *zap.Logger
+	hostname      string
 	meridianStore Store
 	documentStore *nimona.DocumentStore
 	keygraphStore *nimona.KeygraphStore
@@ -36,12 +37,14 @@ type api struct {
 
 func NewAPI(
 	logger *zap.Logger,
+	hostname string,
 	meridianStore Store,
 	documentStore *nimona.DocumentStore,
 	keygraphStore *nimona.KeygraphStore,
 ) API {
 	api := &api{
 		logger:        logger,
+		hostname:      hostname,
 		meridianStore: meridianStore,
 		documentStore: documentStore,
 		keygraphStore: keygraphStore,
@@ -132,6 +135,10 @@ func (api *api) Register(
 		DisplayName: req.DisplayName,
 		Description: req.Description,
 		AvatarURL:   req.AvatarURL,
+		Alias: &nimona.IdentityAlias{
+			Hostname: api.hostname,
+			Path:     req.Username,
+		},
 	})
 	if err != nil {
 		return nil, fmt.Errorf("failed to update profile: %w", err)
@@ -194,11 +201,11 @@ func (api *api) Login(
 
 type (
 	GetProfileRequest struct {
-		KeygraphID string `json:"keygraph"`
+		KeygraphID nimona.KeygraphID `json:"keygraph"`
 	}
 	GetProfileResponse struct {
 		KeygraphID nimona.KeygraphID `json:"keygraph"`
-		Profile    *NimonaProfile    `json:"profile"`
+		Profile    Profile           `json:"profile"`
 	}
 )
 
@@ -206,16 +213,25 @@ func (api *api) GetProfile(
 	ctx context.Context,
 	req *GetProfileRequest,
 ) (*GetProfileResponse, error) {
-	// TODO: implement
-	return nil, fmt.Errorf("not implemented")
+	// get profile
+	profile, err := api.meridianStore.GetProfile(ctx, req.KeygraphID)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get profile: %w", err)
+	}
+
+	return &GetProfileResponse{
+		KeygraphID: req.KeygraphID,
+		Profile:    *profile,
+	}, nil
 }
 
 type (
 	UpdateProfileRequest struct {
-		KeygraphID  nimona.KeygraphID `json:"keygraph"`
-		DisplayName string            `json:"displayName,omitempty"`
-		Description string            `json:"description,omitempty"`
-		AvatarURL   string            `json:"avatarUrl,omitempty"`
+		KeygraphID  nimona.KeygraphID     `json:"keygraph"`
+		DisplayName string                `json:"displayName,omitempty"`
+		Description string                `json:"description,omitempty"`
+		AvatarURL   string                `json:"avatarUrl,omitempty"`
+		Alias       *nimona.IdentityAlias `json:"alias,omitempty"`
 	}
 	UpdateProfileResponse struct{}
 )
@@ -246,6 +262,7 @@ func (api *api) UpdateProfile(
 		DisplayName: req.DisplayName,
 		Description: req.Description,
 		AvatarURL:   req.AvatarURL,
+		Alias:       req.Alias,
 	}
 
 	patchDoc, err := api.documentStore.CreatePatch(
@@ -631,6 +648,7 @@ func (api *api) processProfileDocument(doc *nimona.Document) {
 		DisplayName: profile.DisplayName,
 		Description: profile.Description,
 		AvatarURL:   profile.AvatarURL,
+		Alias:       profile.Alias,
 	}
 	ctx := context.Background()
 	err = api.meridianStore.PutProfile(ctx, p)

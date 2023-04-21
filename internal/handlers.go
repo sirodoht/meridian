@@ -43,7 +43,7 @@ func (handlers *Handlers) Register(r *chi.Mux) {
 	r.Use(handlers.authMiddleware)
 
 	// register handlers
-	r.Get("/", handlers.HandleIndex)
+	r.Get("/", handlers.HandleNotes)
 	r.Get("/login", handlers.HandleLogin)
 	r.Post("/login", handlers.HandleLogin)
 	r.Post("/logout", handlers.HandleLogout)

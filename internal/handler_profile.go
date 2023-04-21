@@ -26,6 +26,17 @@ func (handlers *Handlers) HandleProfile(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 
+	profile, err := handlers.api.GetProfile(
+		r.Context(),
+		&GetProfileRequest{
+			KeygraphID: keygraphID,
+		},
+	)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
 	followers, err := handlers.api.GetFollowers(
 		r.Context(),
 		&GetFollowersRequest{
@@ -48,15 +59,18 @@ func (handlers *Handlers) HandleProfile(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 
+	spew.Dump(profile.Profile)
 	spew.Dump(followers)
 	spew.Dump(followees)
 
 	values := struct {
 		TemplateValues
+		Profile   Profile
 		Followers []nimona.KeygraphID
 		Followees []nimona.KeygraphID
 	}{
 		TemplateValues: handlers.valuesFromCtx(r.Context()),
+		Profile:        profile.Profile,
 		Followers:      followers.Followers,
 		Followees:      followees.Followees,
 	}

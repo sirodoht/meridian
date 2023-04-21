@@ -27,6 +27,7 @@ type Config struct {
 	Debug       bool   `envconfig:"DEBUG" default:"false"`
 	Environment string `envconfig:"ENV" default:"development"`
 	BindAddress string `envconfig:"BIND_ADDRESS" default:":8000"`
+	Hostname    string `envconfig:"HOSTNAME" default:"meridian.dev"`
 }
 
 func main() {
@@ -105,7 +106,13 @@ func main() {
 	meridianStore := internal.NewSQLStore(db)
 
 	// Construct a new meridian api
-	api := internal.NewAPI(logger, meridianStore, docStore, kgStore)
+	api := internal.NewAPI(
+		logger,
+		cfg.Hostname,
+		meridianStore,
+		docStore,
+		kgStore,
+	)
 
 	// Construct a new meridian router
 	handlers := internal.NewHandlers(logger, api, meridianStore)

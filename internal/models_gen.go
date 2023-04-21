@@ -194,6 +194,16 @@ func (t *NimonaProfile) Map() tilde.Map {
 		m.Set("$type", tilde.String("profile"))
 	}
 
+	// # t.Alias
+	//
+	// Type: nimona.IdentityAlias, Kind: struct, TildeKind: Map
+	// IsSlice: false, IsStruct: true, IsPointer: true
+	{
+		if !zero.IsZeroVal(t.Alias) {
+			m.Set("alias", t.Alias.Map())
+		}
+	}
+
 	// # t.AvatarURL
 	//
 	// Type: string, Kind: string, TildeKind: String
@@ -241,6 +251,21 @@ func (t *NimonaProfile) FromDocument(d *nimona.Document) error {
 
 func (t *NimonaProfile) FromMap(d tilde.Map) error {
 	*t = NimonaProfile{}
+
+	// # t.Alias
+	//
+	// Type: nimona.IdentityAlias, Kind: struct, TildeKind: Map
+	// IsSlice: false, IsStruct: true, IsPointer: true
+	{
+		if v, err := d.Get("alias"); err == nil {
+			if v, ok := v.(tilde.Map); ok {
+				e := nimona.IdentityAlias{}
+				d := nimona.NewDocument(v)
+				e.FromDocument(d)
+				t.Alias = &e
+			}
+		}
+	}
 
 	// # t.AvatarURL
 	//
