@@ -8,29 +8,36 @@ import (
 
 type (
 	User struct {
-		IdentityNRI  string `gorm:"type:varchar(255);primary_key"`
-		Username     string `gorm:"type:varchar(255);unique,index"`
-		Email        string `gorm:"type:varchar(255);unique"`
+		KeygraphID   nimona.KeygraphID `gorm:"type:varchar(255);primary_key"`
+		Username     string            `gorm:"type:varchar(255);unique,index"`
+		Email        string            `gorm:"type:varchar(255);unique"`
 		PasswordHash string
 		CreatedAt    time.Time
 		UpdatedAt    time.Time
 	}
 	Profile struct {
-		IdentityNRI string `gorm:"type:varchar(255);primary_key"`
+		KeygraphID  string `gorm:"type:varchar(255);primary_key"`
 		DisplayName string
 		Description string
+		Alias       *nimona.IdentityAlias
 		AvatarURL   string
 		CreatedAt   time.Time
 		UpdatedAt   time.Time
 	}
+	Follow struct {
+		Follower  nimona.KeygraphID `gorm:"type:varchar(255);primary_key"`
+		Followee  nimona.KeygraphID `gorm:"type:varchar(255);primary_key"`
+		CreatedAt time.Time
+		UpdatedAt time.Time
+	}
 	Note struct {
-		IdentityNRI string
-		NoteID      string `gorm:"type:varchar(255);primary_key"`
-		Content     string `gorm:"type:text"`
-		CreatedAt   time.Time
-		UpdatedAt   time.Time
+		KeygraphID nimona.KeygraphID
+		NoteID     string `gorm:"type:varchar(255);primary_key"`
+		Content    string `gorm:"type:text"`
+		CreatedAt  time.Time
+		UpdatedAt  time.Time
 		// Virtual
-		Profile *Profile `gorm:"foreignKey:IdentityNRI;references:IdentityNRI"`
+		Profile Profile `gorm:"foreignKey:KeygraphID;references:KeygraphID"`
 	}
 )
 
@@ -51,10 +58,11 @@ type (
 		Folowees []*NimonaFollow `nimona:"folowees,omitempty"`
 	}
 	NimonaProfile struct {
-		Metadata    nimona.Metadata `nimona:"$metadata,type=profile"`
-		DisplayName string          `nimona:"displayName,omitempty"`
-		Description string          `nimona:"description,omitempty"`
-		AvatarURL   string          `nimona:"avatarURL,omitempty"`
+		Metadata    nimona.Metadata       `nimona:"$metadata,type=profile"`
+		DisplayName string                `nimona:"displayName,omitempty"`
+		Description string                `nimona:"description,omitempty"`
+		Alias       *nimona.IdentityAlias `nimona:"alias,omitempty"`
+		AvatarURL   string                `nimona:"avatarURL,omitempty"`
 	}
 	NimonaNote struct {
 		Metadata  nimona.Metadata `nimona:"$metadata,type=note"`
@@ -63,9 +71,9 @@ type (
 		Content   string          `nimona:"content"`
 	}
 	NimonaFollow struct {
-		Metadata  nimona.Metadata      `nimona:"$metadata,type=follow"`
-		Identity  nimona.Identity      `nimona:"identity,omitempty"`
-		Alias     nimona.IdentityAlias `nimona:"alias,omitempty"`
-		Timestamp string               `nimona:"timestamp,omitempty"`
+		Metadata   nimona.Metadata      `nimona:"$metadata,type=follow"`
+		KeygraphID nimona.KeygraphID    `nimona:"identity,omitempty"`
+		Alias      nimona.IdentityAlias `nimona:"alias,omitempty"`
+		Timestamp  string               `nimona:"timestamp,omitempty"`
 	}
 )

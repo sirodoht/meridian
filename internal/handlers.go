@@ -43,14 +43,21 @@ func (handlers *Handlers) Register(r *chi.Mux) {
 	r.Use(handlers.authMiddleware)
 
 	// register handlers
-	r.Get("/", handlers.HandleIndex)
+	r.Get("/", handlers.HandleNotes)
 	r.Get("/login", handlers.HandleLogin)
 	r.Post("/login", handlers.HandleLogin)
+	r.Post("/logout", handlers.HandleLogout)
 	r.Get("/signup", handlers.HandleRegister)
 	r.Post("/signup", handlers.HandleRegister)
 	r.Get("/notes", handlers.HandleNotes)
 	r.Get("/notes/new", handlers.HandleNotesNew)
 	r.Post("/notes/new", handlers.HandleNotesNew)
+	r.Post("/follow", handlers.HandleFollow)
+	r.Get("/profile/{keygraphID}", handlers.HandleProfile)
+
+	// register dev handlers
+	// TODO: remove in production
+	r.Get("/dev/populate", handlers.HandlePopulate)
 
 	// static files
 	fs := http.FileServer(http.FS(staticFiles))

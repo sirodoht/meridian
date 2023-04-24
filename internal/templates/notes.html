@@ -6,10 +6,18 @@
         <li>
             <p>{{ .Content }}</p>
             <p>by 
-                <span title="{{ .IdentityNRI }}">
-                    {{ .Profile.DisplayName }}
+                <span title="{{ .KeygraphID.NRI }}">
+                    <a href="/profile/{{ identityFromNRI .KeygraphID.String }}">
+                        {{ .Profile.DisplayName }}
+                    </a>
                 </span>
                  at {{ .CreatedAt }}</p>
+                 {{ if $.User }}
+                 <form class="form-inline" action="/follow" method="post">
+                     <input type="hidden" name="followee" value="{{ .KeygraphID.String }}">
+                     (<input type="submit" value="follow {{ .Profile.DisplayName }}">)
+                 </form>
+                 {{ end }}
         </li>
         {{ end }}
 </main>

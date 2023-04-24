@@ -3,16 +3,20 @@ module github.com/sirodoht/meridian
 go 1.20
 
 require (
-	github.com/geoah/go-pubsub v0.0.3
+	github.com/davecgh/go-spew v1.1.1
+	github.com/geoah/go-pubsub v0.0.5
 	github.com/go-chi/chi/v5 v5.0.8
+	github.com/go-faker/faker/v4 v4.1.0
 	github.com/google/uuid v1.3.0
+	github.com/kelseyhightower/envconfig v1.4.0
 	github.com/vikyd/zero v0.0.0-20190921142904-0f738d0bc858
 	go.uber.org/zap v1.24.0
-	golang.org/x/crypto v0.7.0
+	golang.org/x/crypto v0.8.0
 	gorm.io/driver/sqlite v1.4.4
-	gorm.io/gorm v1.24.6
+	gorm.io/gorm v1.25.0
 	moul.io/chizap v1.0.3
-	nimona.io v0.0.0-20230403170942-692e202a96e7
+	moul.io/zapgorm2 v1.3.0
+	nimona.io v0.0.0-20230421204547-63507905aa78
 )
 
 require (
@@ -20,7 +24,6 @@ require (
 	github.com/anacrolix/missinggo/perf v1.0.0 // indirect
 	github.com/anacrolix/missinggo/v2 v2.7.1 // indirect
 	github.com/anacrolix/sync v0.4.0 // indirect
-	github.com/davecgh/go-spew v1.1.1 // indirect
 	github.com/go-chi/chi v1.5.4 // indirect
 	github.com/gobwas/glob v0.2.3 // indirect
 	github.com/golang/mock v1.7.0-rc.1 // indirect
@@ -43,6 +46,7 @@ require (
 	go.uber.org/atomic v1.10.0 // indirect
 	go.uber.org/multierr v1.10.0 // indirect
 	golang.org/x/sys v0.7.0 // indirect
+	golang.org/x/text v0.9.0 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 	modernc.org/sqlite v1.21.0 // indirect
 )

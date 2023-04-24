@@ -6,6 +6,8 @@ import (
 
 	"gorm.io/gorm"
 	"gorm.io/gorm/clause"
+
+	"nimona.io"
 )
 
 var ErrNotFound = fmt.Errorf("not found")
@@ -14,9 +16,12 @@ type Store interface {
 	PutUser(context.Context, *User) error
 	GetUser(context.Context, string) (*User, error)
 	PutProfile(context.Context, *Profile) error
-	GetProfile(context.Context, string) (*Profile, error)
+	GetProfile(context.Context, nimona.KeygraphID) (*Profile, error)
 	PutNote(context.Context, *Note) error
 	GetNotes(context.Context, string, int, int) ([]*Note, error)
+	PutFollow(context.Context, *Follow) error
+	GetFollowers(context.Context, nimona.KeygraphID) ([]*Follow, error)
+	GetFollowees(context.Context, nimona.KeygraphID) ([]*Follow, error)
 	PutSession(context.Context, *Session) error
 	GetSession(context.Context, string) (*Session, error)
 }
@@ -29,6 +34,7 @@ func NewSQLStore(gdb *gorm.DB) Store {
 	gdb.AutoMigrate(
 		&User{},
 		&Profile{},
+		&Follow{},
 		&Note{},
 		&Session{},
 	)
@@ -82,7 +88,7 @@ func (s *SQLStore) GetUser(
 	}
 
 	// TODO: improve not found check
-	if user.IdentityNRI == "" {
+	if user.KeygraphID.IsEmpty() {
 		return nil, ErrNotFound
 	}
 
@@ -115,16 +121,16 @@ func (s *SQLStore) PutProfile(
 
 func (s *SQLStore) GetProfile(
 	ctx context.Context,
-	identityNRI string,
+	keygraphID nimona.KeygraphID,
 ) (*Profile, error) {
-	if identityNRI == "" {
+	if keygraphID.IsEmpty() {
 		return nil, fmt.Errorf("failed to get profile: nil request")
 	}
 
 	var profile Profile
 	err := s.db.
 		WithContext(ctx).
-		Where("id = ?", identityNRI).
+		Where("keygraph_id = ?", keygraphID).
 		First(&profile).
 		Error
 	if err != nil {
@@ -170,7 +176,7 @@ func (s *SQLStore) GetNotes(
 		Preload("Profile")
 
 	if identityNRI != "" {
-		query = query.Where("identity_nri = ?", identityNRI)
+		query = query.Where("identity = ?", identityNRI)
 	}
 
 	var notes []*Note
@@ -185,6 +191,72 @@ func (s *SQLStore) GetNotes(
 	}
 
 	return notes, nil
+}
+
+func (s *SQLStore) PutFollow(
+	ctx context.Context,
+	req *Follow,
+) error {
+	if req == nil {
+		return fmt.Errorf("failed to put follow: nil request")
+	}
+
+	err := s.db.
+		WithContext(ctx).
+		Clauses(
+			clause.OnConflict{
+				UpdateAll: true,
+			},
+		).
+		Create(req).
+		Error
+	if err != nil {
+		return fmt.Errorf("failed to put follow: %w", err)
+	}
+
+	return nil
+}
+
+func (s *SQLStore) GetFollowers(
+	ctx context.Context,
+	followee nimona.KeygraphID,
+) ([]*Follow, error) {
+	if followee.IsEmpty() {
+		return nil, fmt.Errorf("failed to get followers: nil request")
+	}
+
+	var follows []*Follow
+	err := s.db.
+		WithContext(ctx).
+		Where("followee = ?", followee).
+		Find(&follows).
+		Error
+	if err != nil {
+		return nil, fmt.Errorf("failed to get follows: %w", err)
+	}
+
+	return follows, nil
+}
+
+func (s *SQLStore) GetFollowees(
+	ctx context.Context,
+	follower nimona.KeygraphID,
+) ([]*Follow, error) {
+	if follower.IsEmpty() {
+		return nil, fmt.Errorf("failed to get followees: nil request")
+	}
+
+	var follows []*Follow
+	err := s.db.
+		WithContext(ctx).
+		Where("follower = ?", follower).
+		Find(&follows).
+		Error
+	if err != nil {
+		return nil, fmt.Errorf("failed to get follows: %w", err)
+	}
+
+	return follows, nil
 }
 
 func (s *SQLStore) PutSession(

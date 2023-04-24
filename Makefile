@@ -20,3 +20,7 @@ build:
 .PHONY: test
 test:
 	go test -v ./...
+
+.PHONY: codegen
+codegen:
+	NIMONA_CODEGEN=true go test -v -run=TestCodegen --count=1 ./...

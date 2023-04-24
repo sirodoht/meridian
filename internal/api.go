@@ -22,32 +22,43 @@ type API interface {
 	CreateNote(context.Context, *CreateNoteRequest) (*CreateNoteResponse, error)
 	GetNotes(context.Context, *GetNotesRequest) (*GetNotesResponse, error)
 	GetNote(context.Context, *GetNoteRequest) (*GetNoteResponse, error)
-}
-
-func NewAPI(
-	logger *zap.Logger,
-	meridianStore Store,
-	documentStore *nimona.DocumentStore,
-	identityStore *nimona.IdentityStore,
-) API {
-	api := &api{
-		logger:        logger,
-		meridianStore: meridianStore,
-		documentStore: documentStore,
-		identityStore: identityStore,
-	}
-
-	sub := documentStore.Subscribe()
-	go api.processDocuments(sub)
-
-	return api
+	Follow(context.Context, *FollowRequest) (*FollowResponse, error)
+	GetFollowees(context.Context, *GetFolloweesRequest) (*GetFolloweesResponse, error)
+	GetFollowers(context.Context, *GetFollowersRequest) (*GetFollowersResponse, error)
 }
 
 type api struct {
 	logger        *zap.Logger
+	hostname      string
 	meridianStore Store
 	documentStore *nimona.DocumentStore
-	identityStore *nimona.IdentityStore
+	keygraphStore *nimona.KeygraphStore
+}
+
+func NewAPI(
+	logger *zap.Logger,
+	hostname string,
+	meridianStore Store,
+	documentStore *nimona.DocumentStore,
+	keygraphStore *nimona.KeygraphStore,
+) API {
+	api := &api{
+		logger:        logger,
+		hostname:      hostname,
+		meridianStore: meridianStore,
+		documentStore: documentStore,
+		keygraphStore: keygraphStore,
+	}
+
+	sub := documentStore.Subscribe(
+		&nimona.SubscriptionOptions{
+			BufferSize:  100,
+			AckDeadline: 5 * time.Second,
+		},
+	)
+	go api.processDocuments(sub)
+
+	return api
 }
 
 type (
@@ -55,11 +66,15 @@ type (
 		Username string `json:"username"`
 		Password string `json:"password"`
 		Email    string `json:"email"`
+		// profile
+		DisplayName string `json:"displayName"`
+		Description string `json:"description"`
+		AvatarURL   string `json:"avatarUrl"`
 	}
 	RegisterResponse struct {
-		User      *User            `json:"user"`
-		Identity  *nimona.Identity `json:"identity"`
-		SessionID string           `json:"sessionId"`
+		User       *User             `json:"user"`
+		KeygraphID nimona.KeygraphID `json:"keygraph"`
+		SessionID  string            `json:"sessionId"`
 	}
 )
 
@@ -67,17 +82,20 @@ func (api *api) Register(
 	ctx context.Context,
 	req *RegisterRequest,
 ) (*RegisterResponse, error) {
-	// create new identity
+	// create new keygraph
 	// TODO: add missing use, once NRI support for use is added
-	id, err := api.identityStore.NewIdentity("")
+	kg, err := api.keygraphStore.NewKeygraph("")
 	if err != nil {
-		return nil, fmt.Errorf("failed to create identity: %w", err)
+		return nil, fmt.Errorf("failed to create keygraph: %w", err)
 	}
 
-	// store identity
-	err = api.documentStore.PutDocument(id.Document())
+	// get keygraph id
+	id := kg.ID()
+
+	// store keygraph
+	err = api.documentStore.PutDocument(kg.Document())
 	if err != nil {
-		return nil, fmt.Errorf("failed to put identity: %w", err)
+		return nil, fmt.Errorf("failed to put keygraph: %w", err)
 	}
 
 	// create new feed
@@ -101,7 +119,7 @@ func (api *api) Register(
 
 	// create user
 	user := &User{
-		IdentityNRI:  id.String(),
+		KeygraphID:   id,
 		Username:     req.Username,
 		PasswordHash: passwordHash,
 		Email:        req.Email,
@@ -113,8 +131,14 @@ func (api *api) Register(
 
 	// update profile
 	_, err = api.UpdateProfile(ctx, &UpdateProfileRequest{
-		IdentityNRI: id.String(),
-		DisplayName: req.Username,
+		KeygraphID:  id,
+		DisplayName: req.DisplayName,
+		Description: req.Description,
+		AvatarURL:   req.AvatarURL,
+		Alias: &nimona.IdentityAlias{
+			Hostname: api.hostname,
+			Path:     req.Username,
+		},
 	})
 	if err != nil {
 		return nil, fmt.Errorf("failed to update profile: %w", err)
@@ -131,9 +155,9 @@ func (api *api) Register(
 	}
 
 	res := &RegisterResponse{
-		User:      user,
-		Identity:  id,
-		SessionID: ses.ID,
+		User:       user,
+		KeygraphID: id,
+		SessionID:  ses.ID,
 	}
 	return res, nil
 }
@@ -177,11 +201,11 @@ func (api *api) Login(
 
 type (
 	GetProfileRequest struct {
-		IdentityNRI string `json:"identity"`
+		KeygraphID nimona.KeygraphID `json:"keygraph"`
 	}
 	GetProfileResponse struct {
-		Identity *nimona.Identity `json:"identity"`
-		Profile  *NimonaProfile   `json:"profile"`
+		KeygraphID nimona.KeygraphID `json:"keygraph"`
+		Profile    Profile           `json:"profile"`
 	}
 )
 
@@ -189,16 +213,25 @@ func (api *api) GetProfile(
 	ctx context.Context,
 	req *GetProfileRequest,
 ) (*GetProfileResponse, error) {
-	// TODO: implement
-	return nil, fmt.Errorf("not implemented")
+	// get profile
+	profile, err := api.meridianStore.GetProfile(ctx, req.KeygraphID)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get profile: %w", err)
+	}
+
+	return &GetProfileResponse{
+		KeygraphID: req.KeygraphID,
+		Profile:    *profile,
+	}, nil
 }
 
 type (
 	UpdateProfileRequest struct {
-		IdentityNRI string `json:"identity"`
-		DisplayName string `json:"displayName,omitempty"`
-		Description string `json:"description,omitempty"`
-		AvatarURL   string `json:"avatarUrl,omitempty"`
+		KeygraphID  nimona.KeygraphID     `json:"keygraph"`
+		DisplayName string                `json:"displayName,omitempty"`
+		Description string                `json:"description,omitempty"`
+		AvatarURL   string                `json:"avatarUrl,omitempty"`
+		Alias       *nimona.IdentityAlias `json:"alias,omitempty"`
 	}
 	UpdateProfileResponse struct{}
 )
@@ -207,22 +240,16 @@ func (api *api) UpdateProfile(
 	ctx context.Context,
 	req *UpdateProfileRequest,
 ) (*UpdateProfileResponse, error) {
-	// get identity
-	id, err := nimona.ParseIdentityNRI(req.IdentityNRI)
-	if err != nil {
-		return nil, fmt.Errorf("failed to parse identity: %w", err)
-	}
-
 	// figure out feed root id
 	feed := &NimonaFeed{
 		Metadata: nimona.Metadata{
-			Owner: id,
+			Owner: req.KeygraphID,
 		},
 	}
 	feedRootID := nimona.NewDocumentID(feed.Document())
 
 	// get signing context
-	sctx, err := api.getSigningContext(req.IdentityNRI)
+	sctx, err := api.getSigningContext(req.KeygraphID)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get signing context: %w", err)
 	}
@@ -230,11 +257,12 @@ func (api *api) UpdateProfile(
 	// create profile
 	profile := &NimonaProfile{
 		Metadata: nimona.Metadata{
-			Owner: id,
+			Owner: req.KeygraphID,
 		},
 		DisplayName: req.DisplayName,
 		Description: req.Description,
 		AvatarURL:   req.AvatarURL,
+		Alias:       req.Alias,
 	}
 
 	patchDoc, err := api.documentStore.CreatePatch(
@@ -259,8 +287,9 @@ func (api *api) UpdateProfile(
 
 type (
 	CreateNoteRequest struct {
-		Username string `json:"username"`
-		Content  string `json:"content"`
+		Username  string    `json:"username"`
+		Content   string    `json:"content"`
+		Timestamp time.Time `json:"timestamp"`
 	}
 	CreateNoteResponse struct{}
 )
@@ -275,31 +304,30 @@ func (api *api) CreateNote(
 		return nil, fmt.Errorf("failed to get user: %w", err)
 	}
 
-	// get identity
-	id, err := nimona.ParseIdentityNRI(user.IdentityNRI)
-	if err != nil {
-		return nil, fmt.Errorf("failed to parse identity: %w", err)
-	}
-
 	// figure out feed root id
 	feed := &NimonaFeed{
 		Metadata: nimona.Metadata{
-			Owner: id,
+			Owner: user.KeygraphID,
 		},
 	}
 	feedRootID := nimona.NewDocumentID(feed.Document())
 
 	// get signing context
-	sctx, err := api.getSigningContext(user.IdentityNRI)
+	sctx, err := api.getSigningContext(user.KeygraphID)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get signing context: %w", err)
 	}
 
 	// create note
+	ts := time.Now().UTC().Format(time.RFC3339)
+	if !req.Timestamp.IsZero() {
+		ts = req.Timestamp.UTC().Format(time.RFC3339)
+	}
+
 	note := &NimonaNote{
 		Metadata: nimona.Metadata{
-			Owner:     id,
-			Timestamp: time.Now().UTC().Format(time.RFC3339),
+			Owner:     user.KeygraphID,
+			Timestamp: ts,
 		},
 		Content: req.Content,
 	}
@@ -326,7 +354,7 @@ func (api *api) CreateNote(
 
 type (
 	GetNotesRequest struct {
-		IdentityNRI string `json:"identity"`
+		KeygraphID string `json:"keygraph"`
 		// TODO: add filters
 		// TODO: add pagination
 		Offset int `json:"offset"`
@@ -349,7 +377,7 @@ func (api *api) GetNotes(
 	// get notes
 	notes, err := api.meridianStore.GetNotes(
 		ctx,
-		req.IdentityNRI,
+		req.KeygraphID,
 		req.Offset,
 		req.Limit,
 	)
@@ -377,6 +405,119 @@ func (api *api) GetNote(
 ) (*GetNoteResponse, error) {
 	// TODO: implement
 	return nil, fmt.Errorf("not implemented")
+}
+
+type (
+	FollowRequest struct {
+		// TODO: should this be a username?
+		KeygraphID       nimona.KeygraphID `json:"keygraph"`
+		FolloweeIdentity nimona.KeygraphID `json:"followeeIdentity"`
+	}
+	FollowResponse struct{}
+)
+
+func (api *api) Follow(
+	ctx context.Context,
+	req *FollowRequest,
+) (*FollowResponse, error) {
+	// figure out feed root id
+	feed := &NimonaFeed{
+		Metadata: nimona.Metadata{
+			Owner: req.KeygraphID,
+		},
+	}
+	feedRootID := nimona.NewDocumentID(feed.Document())
+
+	// get signing context
+	sctx, err := api.getSigningContext(req.KeygraphID)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get signing context: %w", err)
+	}
+	// create follow
+	follow := &NimonaFollow{
+		Metadata: nimona.Metadata{
+			Owner:     req.KeygraphID,
+			Timestamp: time.Now().UTC().Format(time.RFC3339),
+		},
+		KeygraphID: req.FolloweeIdentity,
+	}
+
+	patchDoc, err := api.documentStore.CreatePatch(
+		feedRootID,
+		"append",
+		"folowees",
+		follow.Map(),
+		*sctx,
+	)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create patch: %w", err)
+	}
+
+	// store patch
+	err = api.documentStore.PutDocument(patchDoc)
+	if err != nil {
+		return nil, fmt.Errorf("failed to put profile: %w", err)
+	}
+
+	return &FollowResponse{}, nil
+}
+
+type (
+	GetFollowersRequest struct {
+		KeygraphID nimona.KeygraphID `json:"keygraph"`
+	}
+	GetFollowersResponse struct {
+		Followers []nimona.KeygraphID `json:"followers"`
+	}
+)
+
+func (api *api) GetFollowers(
+	ctx context.Context,
+	req *GetFollowersRequest,
+) (*GetFollowersResponse, error) {
+	// get followers
+	follows, err := api.meridianStore.GetFollowers(ctx, req.KeygraphID)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get followers: %w", err)
+	}
+
+	followers := []nimona.KeygraphID{}
+	for _, follow := range follows {
+		followers = append(followers, follow.Follower)
+	}
+
+	return &GetFollowersResponse{
+		Followers: followers,
+	}, nil
+}
+
+type (
+	GetFolloweesRequest struct {
+		KeygraphID nimona.KeygraphID `json:"keygraph"`
+	}
+	GetFolloweesResponse struct {
+		Followees []nimona.KeygraphID `json:"followees"`
+	}
+)
+
+func (api *api) GetFollowees(
+	ctx context.Context,
+	req *GetFolloweesRequest,
+) (*GetFolloweesResponse, error) {
+	// get followees
+	follows, err := api.meridianStore.GetFollowees(ctx, req.KeygraphID)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get followees: %w", err)
+	}
+
+	followees := []nimona.KeygraphID{}
+	for _, follow := range follows {
+		followees = append(followees, follow.Followee)
+	}
+
+	return &GetFolloweesResponse{
+		Followees: followees,
+	}, nil
 }
 
 func (api *api) processDocuments(sub *pubsub.Subscription[*nimona.Document]) {
@@ -420,13 +561,16 @@ func (api *api) processPatchDocument(doc *nimona.Document) {
 	// convert it into a document
 	valueDoc := nimona.NewDocument(value)
 
-	// figure out if it's a note or profile
+	// assume the value is a document,
+	// and try to figure out its type
 	// TODO: should we verify the path?
 	switch valueDoc.Type() {
 	case "note":
 		api.processNoteDocument(valueDoc)
 	case "profile":
 		api.processProfileDocument(valueDoc)
+	case "follow":
+		api.processFollowDocument(valueDoc)
 	}
 }
 
@@ -447,15 +591,44 @@ func (api *api) processNoteDocument(doc *nimona.Document) {
 
 	// create new note
 	n := &Note{
-		IdentityNRI: note.Metadata.Owner.String(),
-		NoteID:      nimona.NewDocumentID(doc).String(),
-		Content:     note.Content,
-		CreatedAt:   createdAt,
+		KeygraphID: note.Metadata.Owner,
+		NoteID:     nimona.NewDocumentID(doc).String(),
+		Content:    note.Content,
+		CreatedAt:  createdAt,
 	}
 	ctx := context.Background()
 	err = api.meridianStore.PutNote(ctx, n)
 	if err != nil {
 		api.logger.Error("failed to put note", zap.Error(err))
+		return
+	}
+}
+
+func (api *api) processFollowDocument(doc *nimona.Document) {
+	// convert to follow
+	follow := &NimonaFollow{}
+	err := follow.FromDocument(doc)
+	if err != nil {
+		api.logger.Error("failed to convert document to follow", zap.Error(err))
+		return
+	}
+
+	// parse created at
+	createdAt, _ := time.Parse(time.RFC3339, follow.Metadata.Timestamp)
+	if createdAt.IsZero() {
+		createdAt = time.Now()
+	}
+
+	// create new follow
+	f := &Follow{
+		Follower:  follow.Metadata.Owner,
+		Followee:  follow.KeygraphID,
+		CreatedAt: createdAt,
+	}
+	ctx := context.Background()
+	err = api.meridianStore.PutFollow(ctx, f)
+	if err != nil {
+		api.logger.Error("failed to put follow", zap.Error(err))
 		return
 	}
 }
@@ -471,10 +644,11 @@ func (api *api) processProfileDocument(doc *nimona.Document) {
 
 	// create new profile
 	p := &Profile{
-		IdentityNRI: profile.Metadata.Owner.String(),
+		KeygraphID:  profile.Metadata.Owner.String(),
 		DisplayName: profile.DisplayName,
 		Description: profile.Description,
 		AvatarURL:   profile.AvatarURL,
+		Alias:       profile.Alias,
 	}
 	ctx := context.Background()
 	err = api.meridianStore.PutProfile(ctx, p)
@@ -495,7 +669,7 @@ func (api *api) processFeedDocument(doc *nimona.Document) {
 
 	// create new profile
 	profile := &Profile{
-		IdentityNRI: feed.Metadata.Owner.String(),
+		KeygraphID: feed.Metadata.Owner.String(),
 	}
 	ctx := context.Background()
 	err = api.meridianStore.PutProfile(ctx, profile)
@@ -505,22 +679,16 @@ func (api *api) processFeedDocument(doc *nimona.Document) {
 	}
 }
 
-func (api *api) getSigningContext(identityNRI string) (*nimona.SigningContext, error) {
-	// get identity
-	id, err := nimona.ParseIdentityNRI(identityNRI)
-	if err != nil {
-		return nil, fmt.Errorf("invalid identity nri: %w", err)
-	}
-
+func (api *api) getSigningContext(id nimona.KeygraphID) (*nimona.SigningContext, error) {
 	// get keypair
-	ckp, _, err := api.identityStore.GetKeyPairs(id)
+	ckp, _, err := api.keygraphStore.GetKeyPairs(id)
 	if err != nil {
-		return nil, fmt.Errorf("failed to get identity: %w", err)
+		return nil, fmt.Errorf("failed to get keygraph: %w", err)
 	}
 
 	// create signing context
 	sctx := &nimona.SigningContext{
-		Identity:   id,
+		KeygraphID: id,
 		PrivateKey: ckp.PrivateKey,
 	}
 	return sctx, nil
